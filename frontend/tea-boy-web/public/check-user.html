@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check User Data</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #16213e;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        h1 {
+            color: #0f3460;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 32px;
+            margin-bottom: 30px;
+        }
+        .section {
+            background: #0f3460;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 18px;
+        }
+        pre {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            color: #0f0;
+            font-size: 13px;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.good {
+            background: #10b981;
+            color: white;
+        }
+        .status.bad {
+            background: #ef4444;
+            color: white;
+        }
+        .status.warning {
+            background: #f59e0b;
+            color: white;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .actions {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Tea Boy User Data Inspector</h1>
+
+        <div class="section">
+            <h2>User Object <span id="user-status"></span></h2>
+            <pre id="user-data">Loading...</pre>
+        </div>
+
+        <div class="section">
+            <h2>Access Token <span id="token-status"></span></h2>
+            <pre id="token-data">Loading...</pre>
+        </div>
+
+        <div class="section">
+            <h2>Tenant Object <span id="tenant-status"></span></h2>
+            <pre id="tenant-data">Loading...</pre>
+        </div>
+
+        <div class="section">
+            <h2>Diagnosis <span id="diagnosis-status"></span></h2>
+            <pre id="diagnosis">Loading...</pre>
+        </div>
+
+        <div class="actions">
+            <button onclick="clearAndReload()">🧹 Clear Storage & Reload</button>
+            <button onclick="goToLogin()">🔑 Go to Login</button>
+            <button onclick="location.reload()">🔄 Refresh Page</button>
+        </div>
+    </div>
+
+    <script>
+        function clearAndReload() {
+            localStorage.clear();
+            sessionStorage.clear();
+            alert('Storage cleared! Redirecting to login...');
+            window.location.href = '/login';
+        }
+
+        function goToLogin() {
+            window.location.href = '/login';
+        }
+
+        // Check user data
+        const user = localStorage.getItem('user');
+        const accessToken = localStorage.getItem('accessToken');
+        const tenant = localStorage.getItem('tenant');
+
+        // Display user data
+        if (user) {
+            try {
+                const userData = JSON.parse(user);
+                document.getElementById('user-data').textContent = JSON.stringify(userData, null, 2);
+
+                // Check for kitchenNumber
+                if (userData.kitchenNumber !== undefined && userData.kitchenNumber !== null) {
+                    document.getElementById('user-status').innerHTML = '<span class="status good">✓ Has kitchenNumber</span>';
+                } else {
+                    document.getElementById('user-status').innerHTML = '<span class="status bad">✗ Missing kitchenNumber</span>';
+                }
+            } catch (e) {
+                document.getElementById('user-data').textContent = 'Error parsing user data: ' + e.message;
+                document.getElementById('user-status').innerHTML = '<span class="status bad">✗ Invalid</span>';
+            }
+        } else {
+            document.getElementById('user-data').textContent = 'No user data found';
+            document.getElementById('user-status').innerHTML = '<span class="status bad">✗ Not Found</span>';
+        }
+
+        // Display token
+        if (accessToken) {
+            document.getElementById('token-data').textContent = accessToken.substring(0, 50) + '...';
+            document.getElementById('token-status').innerHTML = '<span class="status good">✓ Present</span>';
+        } else {
+            document.getElementById('token-data').textContent = 'No access token found';
+            document.getElementById('token-status').innerHTML = '<span class="status bad">✗ Not Found</span>';
+        }
+
+        // Display tenant
+        if (tenant) {
+            try {
+                const tenantData = JSON.parse(tenant);
+                document.getElementById('tenant-data').textContent = JSON.stringify(tenantData, null, 2);
+                document.getElementById('tenant-status').innerHTML = '<span class="status good">✓ Present</span>';
+            } catch (e) {
+                document.getElementById('tenant-data').textContent = 'Error parsing tenant data: ' + e.message;
+                document.getElementById('tenant-status').innerHTML = '<span class="status bad">✗ Invalid</span>';
+            }
+        } else {
+            document.getElementById('tenant-data').textContent = 'No tenant data found';
+            document.getElementById('tenant-status').innerHTML = '<span class="status warning">⚠ Not Found</span>';
+        }
+
+        // Diagnosis
+        let diagnosis = '';
+        let diagnosisClass = 'good';
+
+        if (!user || !accessToken) {
+            diagnosis = '❌ CRITICAL: User not logged in\n\nAction Required: Go to login page';
+            diagnosisClass = 'bad';
+        } else {
+            try {
+                const userData = JSON.parse(user);
+
+                if (!userData.kitchenNumber) {
+                    diagnosis = '⚠️  WARNING: User session is outdated\n\n';
+                    diagnosis += 'User is missing kitchenNumber field.\n';
+                    diagnosis += 'This means the session was created before kitchen routing was implemented.\n\n';
+                    diagnosis += 'Action Required:\n';
+                    diagnosis += '1. Click "Clear Storage & Reload" button\n';
+                    diagnosis += '2. Login again with: ahmed@demo.com / teaboy123\n';
+                    diagnosis += '3. You will be redirected to: /demo-company/kitchen-1/dashboard\n';
+                    diagnosisClass = 'warning';
+                } else {
+                    diagnosis = '✅ SUCCESS: User session is up-to-date\n\n';
+                    diagnosis += `Kitchen Number: ${userData.kitchenNumber}\n`;
+                    diagnosis += `Expected URL: /${userData.tenantSlug}/kitchen-${userData.kitchenNumber}/dashboard\n\n`;
+                    diagnosis += 'Everything looks good! Dashboard should work correctly.';
+                    diagnosisClass = 'good';
+                }
+            } catch (e) {
+                diagnosis = '❌ ERROR: Unable to parse user data\n\n' + e.message;
+                diagnosisClass = 'bad';
+            }
+        }
+
+        document.getElementById('diagnosis').textContent = diagnosis;
+        document.getElementById('diagnosis-status').innerHTML = `<span class="status ${diagnosisClass}">●</span>`;
+    </script>
+</body>
+</html>

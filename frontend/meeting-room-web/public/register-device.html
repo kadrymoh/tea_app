@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device Registration - Tea Management</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #667eea;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .info-box {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+    }
+    .info-box p {
+      color: #555;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .current-device {
+      background: #e3f2fd;
+      border: 2px solid #2196f3;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+    }
+    .current-device h3 {
+      color: #1976d2;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .current-device p {
+      color: #333;
+      font-size: 14px;
+      margin: 5px 0;
+    }
+    .current-device strong {
+      color: #1976d2;
+    }
+    label {
+      display: block;
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 16px;
+      margin-bottom: 20px;
+      transition: border-color 0.3s;
+    }
+    select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      margin-bottom: 10px;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    .btn-secondary {
+      background: #f44336;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background: #d32f2f;
+    }
+    .success-message {
+      background: #4caf50;
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .room-info {
+      background: #f0f0f0;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🫖 Device Registration</h1>
+    <p class="subtitle">Register this tablet/device to a meeting room</p>
+
+    <div class="info-box">
+      <p>📱 This page registers the current device to a specific meeting room. Once registered, the device will automatically open the correct room's ordering interface.</p>
+    </div>
+
+    <div id="currentDevice" class="current-device" style="display: none;">
+      <h3>✅ Currently Registered:</h3>
+      <p><strong>Room ID:</strong> <span id="currentRoomId"></span></p>
+      <p><strong>Room Name:</strong> <span id="currentRoomName"></span></p>
+      <p><strong>Registered:</strong> <span id="registeredDate"></span></p>
+    </div>
+
+    <div id="successMessage" class="success-message">
+      ✅ Device registered successfully!
+    </div>
+
+    <label for="roomSelect">Select Meeting Room:</label>
+    <select id="roomSelect">
+      <option value="">-- Choose a room --</option>
+    </select>
+
+    <button class="btn btn-primary" onclick="registerDevice()">
+      🔗 Register This Device
+    </button>
+
+    <button class="btn btn-secondary" onclick="clearRegistration()">
+      🗑️ Clear Registration
+    </button>
+
+    <div class="room-info">
+      <strong>Device ID:</strong> <span id="deviceId"></span><br>
+      <strong>Browser:</strong> <span id="browserInfo"></span>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = 'http://localhost:4000/api';
+    let rooms = [];
+
+    // Generate unique device ID
+    function getDeviceId() {
+      let deviceId = localStorage.getItem('deviceId');
+      if (!deviceId) {
+        deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('deviceId', deviceId);
+      }
+      return deviceId;
+    }
+
+    // Load rooms from API
+    async function loadRooms() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/rooms`);
+        const data = await res.json();
+        
+        if (data.success) {
+          rooms = data.data;
+          const select = document.getElementById('roomSelect');
+          
+          rooms.forEach(room => {
+            const option = document.createElement('option');
+            option.value = room.id;
+            option.textContent = `${room.name} - Floor ${room.floor} (${room.building})`;
+            select.appendChild(option);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load rooms:', err);
+        alert('Failed to load rooms. Make sure the backend is running.');
+      }
+    }
+
+    // Display current registration
+    function displayCurrentRegistration() {
+      const roomId = localStorage.getItem('registeredRoomId');
+      
+      if (roomId) {
+        const currentDevice = document.getElementById('currentDevice');
+        const currentRoomId = document.getElementById('currentRoomId');
+        const currentRoomName = document.getElementById('currentRoomName');
+        const registeredDate = document.getElementById('registeredDate');
+        
+        currentDevice.style.display = 'block';
+        currentRoomId.textContent = roomId;
+        
+        // Find room name
+        const room = rooms.find(r => r.id == roomId);
+        currentRoomName.textContent = room ? room.name : 'Loading...';
+        
+        const date = localStorage.getItem('registrationDate') || new Date().toLocaleDateString();
+        registeredDate.textContent = date;
+        
+        // Pre-select in dropdown
+        document.getElementById('roomSelect').value = roomId;
+      }
+    }
+
+    // Register device to room
+    async function registerDevice() {
+      const roomId = document.getElementById('roomSelect').value;
+      
+      if (!roomId) {
+        alert('Please select a room first!');
+        return;
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('registeredRoomId', roomId);
+      localStorage.setItem('registrationDate', new Date().toLocaleDateString());
+      
+      // Show success message
+      const successMsg = document.getElementById('successMessage');
+      successMsg.style.display = 'block';
+      
+      setTimeout(() => {
+        successMsg.style.display = 'none';
+      }, 3000);
+      
+      // Update display
+      displayCurrentRegistration();
+      
+      // Redirect to room interface after 2 seconds
+      setTimeout(() => {
+        window.location.href = `/index.html?room=${roomId}`;
+      }, 2000);
+    }
+
+    // Clear registration
+    function clearRegistration() {
+      if (confirm('Are you sure you want to clear this device registration?')) {
+        localStorage.removeItem('registeredRoomId');
+        localStorage.removeItem('registrationDate');
+        document.getElementById('currentDevice').style.display = 'none';
+        document.getElementById('roomSelect').value = '';
+        alert('Registration cleared!');
+      }
+    }
+
+    // Display device info
+    function displayDeviceInfo() {
+      document.getElementById('deviceId').textContent = getDeviceId();
+      document.getElementById('browserInfo').textContent = navigator.userAgent.split(' ').slice(-2).join(' ');
+    }
+
+    // Initialize
+    window.onload = async function() {
+      displayDeviceInfo();
+      await loadRooms();
+      displayCurrentRegistration();
+    };
+  </script>
+</body>
+</html>

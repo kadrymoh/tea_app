@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Tenant Room QR Codes</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style>
+    /* Same styles as before */
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    h1 { color: white; text-align: center; margin-bottom: 20px; }
+    .tenant-selector {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .tenant-selector select {
+      padding: 12px 20px;
+      font-size: 16px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      min-width: 300px;
+      cursor: pointer;
+    }
+    .rooms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 30px;
+    }
+    .room-card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    .room-card h2 { color: #667eea; margin-bottom: 10px; }
+    .room-card p { color: #666; margin-bottom: 20px; }
+    .tenant-badge {
+      display: inline-block;
+      background: #764ba2;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    .qr-container {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+    }
+    .room-url {
+      background: #f0f0f0;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      margin: 15px 0;
+      word-break: break-all;
+    }
+    .print-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+    .print-btn:hover { background: #5568d3; }
+    @media print {
+      body { background: white; }
+      .tenant-selector, .print-btn { display: none; }
+      .room-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🫖 Multi-Tenant Room QR Codes</h1>
+
+  <div class="tenant-selector">
+    <h2>Select Company:</h2>
+    <select id="tenantSelect" onchange="loadRooms()">
+      <option value="">-- Select Company --</option>
+    </select>
+    <p style="color: #666; margin-top: 10px; font-size: 14px;">
+      Each company has its own set of rooms and menu items
+    </p>
+  </div>
+
+  <div class="rooms-grid" id="roomsGrid">
+    <!-- QR codes will be generated here -->
+  </div>
+
+  <script>
+    const API_BASE_URL = 'http://localhost:4000/api';
+    const BASE_URL = 'http://localhost:5175'; // Frontend URL
+    
+    let tenants = [];
+    let selectedTenant = null;
+
+    // Load tenants
+    async function loadTenants() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/tenants`);
+        const data = await res.json();
+        
+        if (data.success) {
+          tenants = data.data;
+          const select = document.getElementById('tenantSelect');
+          
+          tenants.forEach(tenant => {
+            if (tenant.isActive) {
+              const option = document.createElement('option');
+              option.value = tenant.slug;
+              option.textContent = `${tenant.name} (${tenant.slug})`;
+              select.appendChild(option);
+            }
+          });
+
+          // Auto-select first tenant for demo
+          if (tenants.length > 0) {
+            select.value = tenants[0].slug;
+            loadRooms();
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load tenants:', err);
+        alert('Failed to load companies. Make sure backend is running.');
+      }
+    }
+
+    // Load rooms for selected tenant
+    async function loadRooms() {
+      const tenantSlug = document.getElementById('tenantSelect').value;
+      if (!tenantSlug) return;
+
+      selectedTenant = tenants.find(t => t.slug === tenantSlug);
+      
+      try {
+        const res = await fetch(`${API_BASE_URL}/rooms?tenant=${tenantSlug}`);
+        const data = await res.json();
+        
+        if (data.success) {
+          generateQRCodes(data.data, selectedTenant);
+        }
+      } catch (err) {
+        console.error('Failed to load rooms:', err);
+        alert('Failed to load rooms for this company.');
+      }
+    }
+
+    // Generate QR codes for rooms
+    function generateQRCodes(rooms, tenant) {
+      const roomsGrid = document.getElementById('roomsGrid');
+      roomsGrid.innerHTML = '';
+      
+      rooms.forEach(room => {
+        const canvasId = `qr-room-${room.id}`;
+        
+        // Multi-tenant URL with both tenant and room
+        const url = `${BASE_URL}?tenant=${tenant.slug}&room=${room.id}`;
+        
+        const roomCard = document.createElement('div');
+        roomCard.className = 'room-card';
+        roomCard.setAttribute('data-room-id', room.id);
+        roomCard.innerHTML = `
+          <div class="tenant-badge">${tenant.name}</div>
+          <h2>${room.name}</h2>
+          <p>Floor ${room.floor} • ${room.building || 'Main Building'}</p>
+          <div class="qr-container">
+            <canvas id="${canvasId}"></canvas>
+          </div>
+          <div class="room-url">${url}</div>
+          <button class="print-btn" onclick="printRoom('${room.id}')">
+            🖨️ Print This Room
+          </button>
+        `;
+        
+        roomsGrid.appendChild(roomCard);
+        
+        // Generate QR code
+        setTimeout(() => {
+          const canvas = document.getElementById(canvasId);
+          QRCode.toCanvas(canvas, url, {
+            width: 256,
+            margin: 2,
+            color: {
+              dark: '#667eea',
+              light: '#ffffff'
+            }
+          });
+        }, 100);
+      });
+
+      // Add print all button
+      if (rooms.length > 0) {
+        const printAllDiv = document.createElement('div');
+        printAllDiv.style.textAlign = 'center';
+        printAllDiv.style.marginTop = '30px';
+        printAllDiv.innerHTML = `
+          <button class="print-btn" onclick="window.print()" style="font-size: 18px; padding: 15px 40px;">
+            🖨️ Print All QR Codes for ${tenant.name}
+          </button>
+        `;
+        document.body.appendChild(printAllDiv);
+      }
+    }
+
+    function printRoom(roomId) {
+      const printContent = document.querySelector(`[data-room-id="${roomId}"]`).outerHTML;
+      const originalContent = document.body.innerHTML;
+      
+      document.body.innerHTML = printContent;
+      window.print();
+      document.body.innerHTML = originalContent;
+      location.reload();
+    }
+
+    // Initialize
+    window.onload = loadTenants;
+  </script>
+</body>
+</html>

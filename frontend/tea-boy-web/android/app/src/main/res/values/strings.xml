@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tea Boy</string>
+    <string name="title_activity_main">Tea Boy</string>
+    <string name="package_name">com.twaasol.teaboy</string>
+    <string name="custom_url_scheme">com.twaasol.teaboy</string>
+</resources>

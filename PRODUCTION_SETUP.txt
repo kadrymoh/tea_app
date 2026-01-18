@@ -1,0 +1,305 @@
+═══════════════════════════════════════════════════════════════
+  PRODUCTION DEPLOYMENT CHECKLIST - Tea Management System
+═══════════════════════════════════════════════════════════════
+
+📋 STEP 1: Edit Backend .env File
+──────────────────────────────────────────────────────────────
+File: backend/.env
+
+Change these values:
+
+1. DATABASE_URL (if not using Docker or different credentials):
+   FROM: postgresql://tea:tea123@localhost:5432/tea_db
+   TO:   postgresql://YOUR_USER:YOUR_PASSWORD@YOUR_HOST:5432/tea_db
+
+2. JWT_SECRET (REQUIRED - security):
+   FROM: super-secret-jwt-key-change-this-in-production-2024
+   TO:   [Generate a strong random key - at least 32 characters]
+
+   Example generator:
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+3. NODE_ENV:
+   FROM: development
+   TO:   production
+
+4. PORT (optional, default 4000 is fine):
+   PORT=4000
+
+5. CORS_ORIGIN:
+   FROM: http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175
+   TO:   https://your-domain.com,https://admin.your-domain.com,https://teaboy.your-domain.com,https://room.your-domain.com
+
+6. APP_URL:
+   FROM: http://localhost:4000
+   TO:   https://api.your-domain.com (or your backend URL)
+
+7. FRONTEND_URL:
+   FROM: http://localhost:5173
+   TO:   https://admin.your-domain.com (super admin URL for activation emails)
+
+8. EMAIL_* (already configured, but verify):
+   - EMAIL_HOST: smtp.gmail.com
+   - EMAIL_PORT: 587
+   - EMAIL_USER: tea.app.management@gmail.com
+   - EMAIL_PASSWORD: [current password - keep or change]
+
+═══════════════════════════════════════════════════════════════
+
+📋 STEP 2: Update Frontend API URLs
+──────────────────────────────────────────────────────────────
+
+You need to replace "http://localhost:4000" with your production API URL
+in ALL frontend apps.
+
+Files to update in EACH frontend app:
+
+A. Super Admin (frontend/super-admin-web/src/):
+   - pages/SuperAdminDashboard.jsx
+   - pages/SuperAdminLogin.jsx
+   - pages/ActivationPage.jsx
+   - components/SettingsTab.jsx
+
+B. Admin (frontend/admin-web/src/):
+   - services/api.js
+   - services/socket.js
+   - contexts/AuthContext.jsx
+   - hooks/useAdminData.js
+   - pages/AdminPanel.jsx
+   - pages/Login.jsx
+   - pages/Settings.jsx
+
+C. Tea Boy (frontend/tea-boy-web/src/):
+   - services/api.js
+   - services/socket.js
+   - contexts/AuthContext.jsx
+   - pages/TeaBoyDashboard.jsx
+   - pages/Login.jsx
+
+D. Meeting Room (frontend/meeting-room-web/src/):
+   - services/api.js
+   - services/socket.js
+   - contexts/AuthContext.jsx
+   - pages/MeetingRoomInterface.jsx
+   - pages/Login.jsx
+   - pages/TokenSetup.jsx
+   - App.jsx
+
+Search and Replace:
+FROM: http://localhost:4000
+TO:   https://api.your-domain.com (your production API URL)
+
+OR if backend is on same domain:
+TO:   /api (relative path with Nginx proxy)
+
+═══════════════════════════════════════════════════════════════
+
+📋 STEP 3: Build Frontend Apps (After URL Changes!)
+──────────────────────────────────────────────────────────────
+
+IMPORTANT: Build AFTER changing API URLs!
+
+Commands:
+cd frontend/super-admin-web && npm run build
+cd frontend/admin-web && npm run build
+cd frontend/tea-boy-web && npm run build
+cd frontend/meeting-room-web && npm run build
+
+Built files will be in:
+- frontend/super-admin-web/dist/
+- frontend/admin-web/dist/
+- frontend/tea-boy-web/dist/
+- frontend/meeting-room-web/dist/
+
+═══════════════════════════════════════════════════════════════
+
+📋 STEP 4: Upload to Server via FileZilla
+──────────────────────────────────────────────────────────────
+
+What to upload:
+✅ Entire "tea-management-system" folder
+
+Where to upload:
+/home/your-user/tea-management-system/
+
+Upload time: ~10-20 minutes (depending on internet speed)
+
+Note: node_modules will be re-installed on server, so upload is faster.
+
+═══════════════════════════════════════════════════════════════
+
+📋 STEP 5: Server Setup Commands
+──────────────────────────────────────────────────────────────
+
+SSH into your server:
+ssh your-user@your-server-ip
+
+Run these commands:
+
+# 1. Navigate to project
+cd tea-management-system
+
+# 2. Start PostgreSQL (Docker)
+docker-compose up -d
+
+# 3. Wait 10 seconds for database to start
+sleep 10
+
+# 4. Setup backend
+cd backend
+npm install --production
+npx prisma generate
+npx prisma db push
+
+# 5. Start backend with PM2
+npm install -g pm2
+pm2 start server.js --name tea-backend
+pm2 save
+pm2 startup
+
+# 6. Check if running
+pm2 status
+pm2 logs tea-backend
+
+═══════════════════════════════════════════════════════════════
+
+📋 STEP 6: Deploy Frontend (Nginx/Apache)
+──────────────────────────────────────────────────────────────
+
+Option A: Nginx (recommended)
+─────────────────────────────
+
+1. Copy built files to web root:
+sudo mkdir -p /var/www/teaapp
+sudo cp -r ~/tea-management-system/frontend/super-admin-web/dist/* /var/www/teaapp/superadmin/
+sudo cp -r ~/tea-management-system/frontend/admin-web/dist/* /var/www/teaapp/admin/
+sudo cp -r ~/tea-management-system/frontend/tea-boy-web/dist/* /var/www/teaapp/teaboy/
+sudo cp -r ~/tea-management-system/frontend/meeting-room-web/dist/* /var/www/teaapp/room/
+
+2. Create Nginx config:
+sudo nano /etc/nginx/sites-available/teaapp
+
+[See Nginx config example in README.md]
+
+3. Enable and restart:
+sudo ln -s /etc/nginx/sites-available/teaapp /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+Option B: Apache
+────────────────
+[Configure Apache VirtualHosts similarly]
+
+═══════════════════════════════════════════════════════════════
+
+📋 STEP 7: SSL Certificate (HTTPS)
+──────────────────────────────────────────────────────────────
+
+Install Certbot:
+sudo apt install certbot python3-certbot-nginx
+
+Get certificate:
+sudo certbot --nginx -d your-domain.com \
+  -d superadmin.your-domain.com \
+  -d admin.your-domain.com \
+  -d teaboy.your-domain.com \
+  -d room.your-domain.com
+
+Choose option 2: Redirect HTTP to HTTPS
+
+═══════════════════════════════════════════════════════════════
+
+📋 STEP 8: Create Super Admin
+──────────────────────────────────────────────────────────────
+
+Connect to database:
+docker exec -it tea_postgres psql -U tea -d tea_db
+
+Run SQL:
+INSERT INTO "SuperAdmin" (id, email, password, name, "createdAt", "updatedAt")
+VALUES (
+  'super-admin-1',
+  'admin@yourdomain.com',
+  '$2a$10$HASHED_PASSWORD_HERE',
+  'Super Admin',
+  NOW(),
+  NOW()
+);
+
+To generate hashed password:
+node -e "console.log(require('bcryptjs').hashSync('YOUR_PASSWORD', 10))"
+
+═══════════════════════════════════════════════════════════════
+
+✅ VERIFICATION CHECKLIST
+──────────────────────────────────────────────────────────────
+
+After deployment, test:
+
+□ Backend health check: https://api.your-domain.com/health
+□ Super Admin login: https://superadmin.your-domain.com
+□ Create tenant via Super Admin
+□ Admin login: https://admin.your-domain.com
+□ Create users (tea boys)
+□ Create rooms
+□ Tea Boy login: https://teaboy.your-domain.com
+□ Add menu items
+□ Meeting Room access: https://room.your-domain.com
+□ Place order from room
+□ Verify order appears in Tea Boy dashboard
+□ Real-time updates working
+□ Email activation working
+
+═══════════════════════════════════════════════════════════════
+
+🔧 TROUBLESHOOTING
+──────────────────────────────────────────────────────────────
+
+Backend not starting:
+- Check logs: pm2 logs tea-backend
+- Check .env file exists and has correct values
+- Check database connection: docker ps
+- Check port 4000 not in use: sudo lsof -i :4000
+
+Frontend blank page:
+- Check browser console for errors
+- Verify API URL is correct in frontend code
+- Check CORS settings in backend .env
+- Check Nginx config
+
+Database connection error:
+- Verify Docker container running: docker ps
+- Check DATABASE_URL in .env
+- Try: docker-compose restart
+
+SSL issues:
+- Verify DNS records point to server
+- Check firewall allows ports 80/443
+- Try: sudo certbot renew --dry-run
+
+═══════════════════════════════════════════════════════════════
+
+📞 QUICK REFERENCE
+──────────────────────────────────────────────────────────────
+
+Restart backend:
+pm2 restart tea-backend
+
+View backend logs:
+pm2 logs tea-backend
+
+Restart database:
+docker-compose restart
+
+View database logs:
+docker logs tea_postgres
+
+Restart Nginx:
+sudo systemctl restart nginx
+
+Check Nginx config:
+sudo nginx -t
+
+═══════════════════════════════════════════════════════════════
+
+Last updated: January 7, 2026

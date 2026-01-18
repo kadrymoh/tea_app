@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tea Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .card {
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+    <div class="max-w-6xl w-full">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <div class="text-8xl mb-4">🫖</div>
+            <h1 class="text-5xl font-black text-white mb-4">
+                Tea Management System
+            </h1>
+            <p class="text-xl text-white/90">
+                Choose Your Portal
+            </p>
+        </div>
+
+        <!-- Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <!-- Admin Card -->
+            <a href="/tenant/admin" class="card bg-white rounded-2xl p-10 text-center cursor-pointer block">
+                <div class="icon">🏢</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Admin</h2>
+                <p class="text-gray-600 mb-8 text-lg">
+                    Manage users, orders and reports
+                </p>
+                <div class="inline-flex items-center text-blue-600 font-semibold text-lg">
+                    <span>Login</span>
+                    <svg class="w-6 h-6 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            </a>
+
+            <!-- Tea Boy Card -->
+            <a href="/tenant/tea-boy" class="card bg-white rounded-2xl p-10 text-center cursor-pointer block">
+                <div class="icon">☕</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Tea Boy</h2>
+                <p class="text-gray-600 mb-8 text-lg">
+                    Receive and manage kitchen orders
+                </p>
+                <div class="inline-flex items-center text-green-600 font-semibold text-lg">
+                    <span>Login</span>
+                    <svg class="w-6 h-6 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-12 text-white/80">
+            <p class="text-lg">
+                Tea Management System v2.0.0
+            </p>
+            <p class="text-sm mt-2">
+                All Rights Reserved © 2025
+            </p>
+        </div>
+    </div>
+</body>
+</html>

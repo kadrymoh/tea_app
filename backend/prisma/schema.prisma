@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+//////////////////////////////////////
+// ENUMS
+//////////////////////////////////////
+
+enum UserRole {
+  ADMIN
+  TEA_BOY
+  MANAGER
+}
+
+enum MenuCategory {
+  HOT_TEA
+  COFFEE
+  JUICE
+  SOFT_DRINK
+  WATER
+  SNACKS
+  OTHER
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  STATUS_CHANGE
+}
+
+//////////////////////////////////////
+// TENANT (SAAS ROOT) - ✅ UPDATED
+//////////////////////////////////////
+
+model Tenant {
+  id       String  @id @default(uuid())
+  name     String
+  slug     String  @unique
+  domain   String?
+  isActive Boolean @default(true)
+
+  // ✅ NEW: Super Admin Fields
+
+  plan            String   @default("basic")
+  maxRooms        Int      @default(10)
+  maxUsers        Int      @default(5)
+  maxOrders       Int      @default(99)
+  subscriptionEnd DateTime?
+
+  monthlyFee      Float    @default(99.00)
+  currency        String   @default("USD")
+
+  contactName     String?
+  contactEmail    String?
+  contactPhone    String?
+
+  totalOrders     Int      @default(0)
+  totalRevenue    Float    @default(0)
+
+  // Order History Settings
+  enableOrderHistory       Boolean @default(true)  // If false, orders disappear after delivery
+  autoClearHistoryEnabled  Boolean @default(false) // Auto-clear history feature
+  autoClearHistoryInterval Int?                    // Interval in minutes (null = disabled)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  kitchens     Kitchen[]
+  rooms        Room[]
+  menuItems    MenuItem[]
+  orders       Order[]
+  roomDevices  RoomDevice[]
+  authSessions AuthSession[]
+  orderItems   OrderItem[]
+  auditLogs    AuditLog[]
+}
+
+//////////////////////////////////////
+// ✅ NEW: SUPER ADMIN
+//////////////////////////////////////
+
+model SuperAdmin {
+  id           String  @id @default(uuid())
+  name         String
+  email        String  @unique
+  passwordHash String
+  role         String  @default("SUPER_ADMIN")
+  isActive     Boolean @default(true)
+
+  // Email verification and password reset
+  emailVerified     Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+  verificationToken String?   @unique
+  resetToken        String?   @unique
+  resetTokenExpiry  DateTime?
+
+  // User preferences
+  theme String @default("light") // "dark" or "light"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//////////////////////////////////////
+// USERS & AUTH
+//////////////////////////////////////
+
+model User {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name  String
+  email String
+  phone String?
+  role  UserRole @default(TEA_BOY)
+
+  kitchenId String?
+  kitchen   Kitchen? @relation(fields: [kitchenId], references: [id], onDelete: SetNull)
+
+  passwordHash String
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  // Email verification and password reset
+  emailVerified     Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+  verificationToken String?   @unique
+  resetToken        String?   @unique
+  resetTokenExpiry  DateTime?
+
+  // User preferences
+  theme String @default("light") // "dark" or "light"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions       AuthSession[]
+  assignedOrders Order[]       @relation("AssignedOrders")
+  auditLogs      AuditLog[]    @relation("UserAuditLogs")
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+model AuthSession {
+  id       String @id @default(uuid())
+  tenantId String
+  userId   String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash String
+  userAgent        String?
+  ipAddress        String?
+
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
+//////////////////////////////////////
+// LOCATIONS
+//////////////////////////////////////
+
+model Kitchen {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  kitchenNumber Int     @default(1) // Kitchen number within the tenant (1, 2, 3, etc.)
+  name          String
+  building      String?
+  floor         Int?
+  isActive      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  rooms     Room[]
+  orders    Order[]
+  menuItems MenuItem[]
+
+  @@unique([tenantId, kitchenNumber])
+  @@unique([tenantId, name])
+}
+
+model Room {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name     String
+  building String?
+  floor    Int?
+  capacity Int?
+
+  kitchenId String
+  kitchen   Kitchen @relation(fields: [kitchenId], references: [id], onDelete: Restrict)
+
+  // Room Access Token for direct device authentication
+  roomToken String? @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders  Order[]
+  devices RoomDevice[]
+
+  @@unique([tenantId, name])
+}
+
+model RoomDevice {
+  id       String @id @default(uuid())
+  tenantId String
+  roomId   String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  name       String?
+  deviceCode String    @unique
+  apiKeyHash String?
+  isActive   Boolean   @default(true)
+  lastSeenAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+}
+
+//////////////////////////////////////
+// MENU
+//////////////////////////////////////
+
+model MenuItem {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  kitchenId String?
+  kitchen   Kitchen? @relation(fields: [kitchenId], references: [id], onDelete: Cascade)
+
+  name      String
+  nameAr    String?
+  category  MenuCategory @default(OTHER)
+  price     Float
+  currency  String       @default("SAR")
+  emoji     String?
+  imageUrl  String?
+  available Boolean      @default(true)
+
+  // Product type - if true, this is ice-only product (no sugar option)
+  isIceOnly Boolean @default(false)
+
+  // Sugar option - if false, sugar option won't appear in meeting room interface
+  hasSugar Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@unique([tenantId, kitchenId, name])
+}
+
+//////////////////////////////////////
+// ORDERS
+//////////////////////////////////////
+
+model Order {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  roomId String
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Restrict)
+
+  kitchenId String
+  kitchen   Kitchen @relation(fields: [kitchenId], references: [id], onDelete: Restrict)
+
+  status OrderStatus @default(PENDING)
+
+  notes        String?
+  cancelReason String?
+
+  createdByDeviceId String?
+  createdByDevice   RoomDevice? @relation(fields: [createdByDeviceId], references: [id], onDelete: SetNull)
+
+  assignedToUserId String?
+  assignedToUser   User?   @relation("AssignedOrders", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+
+  quantity Int  @default(1)
+  sugar    Int? // Sugar level: 0=no sugar, 1=light, 2=medium, 3=sweet, 4=extra sweet
+  ice      Int? // Ice level: 0=no ice, 1=light, 2=medium, 3=extra ice
+  notes    String?
+
+  createdAt DateTime @default(now())
+}
+
+//////////////////////////////////////
+// AUDIT LOG
+//////////////////////////////////////
+
+model AuditLog {
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  actorUserId String?
+  actorUser   User?   @relation("UserAuditLogs", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  action   AuditAction
+  entity   String
+  entityId String?
+  metaJson String?
+
+  createdAt DateTime @default(now())
+}
