@@ -87,7 +87,7 @@ const getMenuItemById = async (req, res) => {
 
 const createMenuItem = async (req, res) => {
   try {
-    const { name, nameAr, category, price, imageUrl, emoji } = req.body;
+    const { name, nameAr, category, price, imageUrl, emoji, kitchenId } = req.body;
 
     // Validation
     if (!name || price === undefined || price === null) {
@@ -98,77 +98,88 @@ const createMenuItem = async (req, res) => {
     }
 
     // Validate price is a valid number (allow 0 for free items)
-    if (typeof price !== 'number' || isNaN(price) || price < 0) {
+    const parsedPrice = typeof price === 'number' ? price : parseFloat(price);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
       return res.status(400).json({
         success: false,
         message: 'Price must be a valid positive number (0 or greater)'
       });
     }
 
-    // Get ALL active kitchens for this tenant
-    const kitchens = await req.tenantPrisma.kitchen.findMany({
-      where: { isActive: true }
-    });
+    // Get the kitchen ID from request body or from JWT token (for kitchen login)
+    let targetKitchenId = kitchenId || req.user?.kitchenId;
 
-    if (kitchens.length === 0) {
+    if (!targetKitchenId) {
       return res.status(400).json({
         success: false,
-        message: 'No active kitchens found. Please create a kitchen first.'
+        message: 'Kitchen ID is required'
       });
     }
 
-    // Create the menu item for ALL kitchens in the tenant
-    const menuItems = [];
+    // Verify kitchen exists and is active
+    const kitchen = await req.tenantPrisma.kitchen.findUnique({
+      where: { id: targetKitchenId }
+    });
 
-    for (const kitchen of kitchens) {
-      const menuItem = await req.tenantPrisma.menuItem.create({
-        data: {
-          name,
-          nameAr: nameAr || null,
-          category: category || 'OTHER',
-          price: parseFloat(price),
-          imageUrl: imageUrl || null,
-          emoji: emoji || '☕',
-          kitchenId: kitchen.id,
-          available: true,
-          hasSugar: req.body.hasSugar !== undefined ? req.body.hasSugar : true,
-          isIceOnly: req.body.isIceOnly || false
-        },
-        include: {
-          kitchen: {
-            select: {
-              id: true,
-              name: true,
-              kitchenNumber: true
-            }
+    if (!kitchen) {
+      return res.status(404).json({
+        success: false,
+        message: 'Kitchen not found'
+      });
+    }
+
+    if (!kitchen.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Kitchen is not active'
+      });
+    }
+
+    // Create the menu item only for this specific kitchen
+    const menuItem = await req.tenantPrisma.menuItem.create({
+      data: {
+        name,
+        nameAr: nameAr || null,
+        category: category || 'OTHER',
+        price: parsedPrice,
+        imageUrl: imageUrl || null,
+        emoji: emoji || '☕',
+        kitchenId: targetKitchenId,
+        available: true,
+        hasSugar: req.body.hasSugar !== undefined ? req.body.hasSugar : true,
+        isIceOnly: req.body.isIceOnly || false
+      },
+      include: {
+        kitchen: {
+          select: {
+            id: true,
+            name: true,
+            kitchenNumber: true
           }
         }
-      });
+      }
+    });
 
-      menuItems.push(menuItem);
-    }
-
-    console.log(`✅ Created menu item "${name}" for ${kitchens.length} kitchens`);
+    console.log(`✅ Created menu item "${name}" for kitchen ${kitchen.name}`);
 
     // Emit socket event for real-time menu update
     if (req.app.locals.io) {
       req.app.locals.io.emit('menu-update', {
         action: 'create',
-        item: menuItems[0]
+        item: menuItem
       });
       console.log('🔔 Emitted menu-update event for new item');
     }
 
     // Log menu item creation
-    const teaBoyEmail = req.user?.email || 'System';
+    const teaBoyEmail = req.user?.email || req.user?.username || 'System';
     const tenantName = req.tenantName || 'Unknown';
-    logger.menu.create(teaBoyEmail, tenantName, name, kitchens[0]?.kitchenNumber || 0, true);
+    logger.menu.create(teaBoyEmail, tenantName, name, kitchen.kitchenNumber || 0, true);
 
     res.status(201).json({
       success: true,
-      message: `Menu item created successfully for ${kitchens.length} kitchen(s)`,
-      data: menuItems[0], // Return first one for UI compatibility
-      kitchensCount: kitchens.length
+      message: 'Menu item created successfully',
+      data: menuItem
     });
   } catch (error) {
     console.error('Error creating menu item:', error);
@@ -188,11 +199,20 @@ const createMenuItem = async (req, res) => {
 const updateMenuItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, nameAr, category, price, imageUrl, emoji, kitchenId, isAvailable } = req.body;
+    const { name, nameAr, category, price, imageUrl, emoji, isAvailable } = req.body;
 
     // Check if menu item exists
     const existingItem = await req.tenantPrisma.menuItem.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        kitchen: {
+          select: {
+            id: true,
+            name: true,
+            kitchenNumber: true
+          }
+        }
+      }
     });
 
     if (!existingItem) {
@@ -223,26 +243,10 @@ const updateMenuItem = async (req, res) => {
     if (req.body.hasSugar !== undefined) updateData.hasSugar = req.body.hasSugar;
     if (req.body.isIceOnly !== undefined) updateData.isIceOnly = req.body.isIceOnly;
 
-    // Find ALL menu items with the same name across all kitchens
-    const allItemsWithSameName = await req.tenantPrisma.menuItem.findMany({
-      where: { name: existingItem.name }
-    });
-
-    // Update ALL items with the same name across all kitchens
-    const updatePromises = allItemsWithSameName.map(item =>
-      req.tenantPrisma.menuItem.update({
-        where: { id: item.id },
-        data: updateData
-      })
-    );
-
-    await Promise.all(updatePromises);
-
-    console.log(`✅ Updated menu item "${existingItem.name}" across ${allItemsWithSameName.length} kitchens`);
-
-    // Get updated item to return
-    const updatedItem = await req.tenantPrisma.menuItem.findUnique({
+    // Update only this specific menu item (not all items with same name)
+    const updatedItem = await req.tenantPrisma.menuItem.update({
       where: { id },
+      data: updateData,
       include: {
         kitchen: {
           select: {
@@ -254,6 +258,8 @@ const updateMenuItem = async (req, res) => {
       }
     });
 
+    console.log(`✅ Updated menu item "${existingItem.name}" for kitchen ${existingItem.kitchen?.name}`);
+
     // Emit socket event for real-time menu update
     if (req.app.locals.io) {
       req.app.locals.io.emit('menu-update', {
@@ -264,15 +270,14 @@ const updateMenuItem = async (req, res) => {
     }
 
     // Log menu item update
-    const teaBoyEmail = req.user?.email || 'System';
+    const teaBoyEmail = req.user?.email || req.user?.username || 'System';
     const tenantName = req.tenantName || 'Unknown';
     logger.menu.update(teaBoyEmail, tenantName, existingItem.name, updateData, true);
 
     res.json({
       success: true,
-      message: `Menu item updated successfully across ${allItemsWithSameName.length} kitchen(s)`,
-      data: updatedItem,
-      kitchensUpdated: allItemsWithSameName.length
+      message: 'Menu item updated successfully',
+      data: updatedItem
     });
   } catch (error) {
     console.error('Error updating menu item:', error);
@@ -295,7 +300,16 @@ const deleteMenuItem = async (req, res) => {
 
     // Check if menu item exists
     const existingItem = await req.tenantPrisma.menuItem.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        kitchen: {
+          select: {
+            id: true,
+            name: true,
+            kitchenNumber: true
+          }
+        }
+      }
     });
 
     if (!existingItem) {
@@ -305,21 +319,12 @@ const deleteMenuItem = async (req, res) => {
       });
     }
 
-    // Find ALL menu items with the same name across all kitchens
-    const allItemsWithSameName = await req.tenantPrisma.menuItem.findMany({
-      where: { name: existingItem.name }
+    // Delete only this specific menu item (not all items with same name)
+    await req.tenantPrisma.menuItem.delete({
+      where: { id }
     });
 
-    // Delete ALL items with the same name across all kitchens
-    const deletePromises = allItemsWithSameName.map(item =>
-      req.tenantPrisma.menuItem.delete({
-        where: { id: item.id }
-      })
-    );
-
-    await Promise.all(deletePromises);
-
-    console.log(`✅ Deleted menu item "${existingItem.name}" from ${allItemsWithSameName.length} kitchens`);
+    console.log(`✅ Deleted menu item "${existingItem.name}" from kitchen ${existingItem.kitchen?.name}`);
 
     // Emit socket event for real-time menu update
     if (req.app.locals.io) {
@@ -332,14 +337,13 @@ const deleteMenuItem = async (req, res) => {
     }
 
     // Log menu item deletion
-    const teaBoyEmail = req.user?.email || 'System';
+    const teaBoyEmail = req.user?.email || req.user?.username || 'System';
     const tenantName = req.tenantName || 'Unknown';
     logger.menu.delete(teaBoyEmail, tenantName, existingItem.name, true);
 
     res.json({
       success: true,
-      message: `Menu item deleted successfully from ${allItemsWithSameName.length} kitchen(s)`,
-      kitchensDeleted: allItemsWithSameName.length
+      message: 'Menu item deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting menu item:', error);

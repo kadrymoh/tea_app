@@ -429,10 +429,199 @@ const forcePasswordChange = async (req, res) => {
   }
 };
 
+/**
+ * Kitchen Login handler - for kitchen devices to login with kitchen credentials
+ */
+const kitchenLogin = async (req, res) => {
+  try {
+    const { username, password, tenantSlug } = req.body;
+
+    console.log('🍳 Kitchen login attempt:', { username, tenantSlug });
+
+    // Validate input
+    if (!username || !password || !tenantSlug) {
+      console.log('❌ Missing required fields');
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'Company, username and password are required'
+      });
+    }
+
+    // Find tenant by slug
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug: tenantSlug }
+    });
+
+    if (!tenant) {
+      console.log('❌ Tenant not found:', tenantSlug);
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid credentials',
+        message: 'Invalid company or credentials'
+      });
+    }
+
+    if (!tenant.isActive) {
+      return res.status(403).json({
+        success: false,
+        error: 'Tenant inactive',
+        message: 'This company account has been deactivated'
+      });
+    }
+
+    // Find kitchen by username within the tenant
+    const kitchen = await prisma.kitchen.findFirst({
+      where: {
+        tenantId: tenant.id,
+        username
+      },
+      include: {
+        tenant: true
+      }
+    });
+
+    if (!kitchen) {
+      console.log('❌ Kitchen not found with username:', username);
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid credentials',
+        message: 'Username or password is incorrect'
+      });
+    }
+
+    console.log('✅ Kitchen found:', { name: kitchen.name, username: kitchen.username });
+
+    // Check if kitchen is active
+    if (!kitchen.isActive) {
+      console.log('❌ Kitchen is not active');
+      return res.status(403).json({
+        success: false,
+        error: 'Kitchen inactive',
+        message: 'This kitchen has been deactivated'
+      });
+    }
+
+    // Check if password hash exists
+    if (!kitchen.passwordHash) {
+      console.log('❌ Kitchen has no password set');
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid credentials',
+        message: 'Username or password is incorrect'
+      });
+    }
+
+    // Verify password
+    const bcrypt = require('bcryptjs');
+    const isPasswordValid = await bcrypt.compare(password, kitchen.passwordHash);
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password');
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid credentials',
+        message: 'Username or password is incorrect'
+      });
+    }
+
+    console.log('✅ Password is valid');
+
+    // Generate tokens for kitchen
+    const tokens = generateTokenPair({
+      kitchenId: kitchen.id,
+      tenantId: kitchen.tenantId,
+      role: 'KITCHEN',
+      username: kitchen.username
+    });
+
+    console.log('✅ Kitchen login successful!');
+
+    // Log successful login
+    logger.auth.login('KITCHEN', kitchen.username, kitchen.tenant.name, true);
+
+    res.json({
+      success: true,
+      data: {
+        kitchen: {
+          id: kitchen.id,
+          name: kitchen.name,
+          kitchenNumber: kitchen.kitchenNumber,
+          username: kitchen.username,
+          tenantId: kitchen.tenantId,
+          tenantName: kitchen.tenant.name,
+          tenantSlug: kitchen.tenant.slug
+        },
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn: tokens.expiresIn
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Kitchen login error:', error);
+    logger.auth.login('KITCHEN', req.body?.username || 'Unknown', 'Unknown', false, error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Login failed',
+      message: 'An error occurred during login'
+    });
+  }
+};
+
+/**
+ * Get current kitchen
+ */
+const getCurrentKitchen = async (req, res) => {
+  try {
+    if (!req.user || !req.user.kitchenId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Not authenticated'
+      });
+    }
+
+    const kitchen = await prisma.kitchen.findUnique({
+      where: { id: req.user.kitchenId },
+      include: {
+        tenant: true
+      }
+    });
+
+    if (!kitchen) {
+      return res.status(404).json({
+        success: false,
+        error: 'Kitchen not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: kitchen.id,
+        name: kitchen.name,
+        kitchenNumber: kitchen.kitchenNumber,
+        username: kitchen.username,
+        tenantId: kitchen.tenantId,
+        tenantName: kitchen.tenant.name,
+        tenantSlug: kitchen.tenant.slug
+      }
+    });
+  } catch (error) {
+    console.error('Get current kitchen error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get kitchen data'
+    });
+  }
+};
+
 module.exports = {
   login,
   logout,
   refreshToken,
   getCurrentUser,
-  forcePasswordChange
+  forcePasswordChange,
+  kitchenLogin,
+  getCurrentKitchen
 };

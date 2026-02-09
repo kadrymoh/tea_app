@@ -197,6 +197,10 @@ model Kitchen {
   floor         Int?
   isActive      Boolean @default(true)
 
+  // Kitchen Login Credentials
+  username     String?
+  passwordHash String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -207,6 +211,7 @@ model Kitchen {
 
   @@unique([tenantId, kitchenNumber])
   @@unique([tenantId, name])
+  @@unique([tenantId, username])
 }
 
 model Room {

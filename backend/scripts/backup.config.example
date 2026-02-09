@@ -1,64 +1,107 @@
 # ============================================
 # Tea Management System - Backup Configuration
 # ============================================
-# Copy this file to backup.config and fill in your values
+# Copy this file to backup.config and modify the values:
+#   cp backup.config.example backup.config
+#   nano backup.config
 # ============================================
 
+# ============================================
 # DATABASE CONFIGURATION
+# ============================================
 DB_NAME="tea_management"
 DB_USER="postgres"
-DB_PASSWORD=""
+DB_PASSWORD="your_database_password_here"
 DB_HOST="localhost"
 DB_PORT="5432"
 
-# LOCAL BACKUP
-LOCAL_BACKUP_DIR="/var/backups/tea-management"
-BACKUP_RETENTION_DAYS=30
+# ============================================
+# LOCAL BACKUP CONFIGURATION
+# ============================================
+# Where to store backups locally
+BACKUP_DIR="/var/backups/tea-management"
+
+# Log file location
+LOG_FILE="/var/log/tea-management-backup.log"
+
+# How many days to keep daily backups locally
+RETENTION_DAYS=30
+
+# How many days to keep backups on remote/cloud
+REMOTE_RETENTION_DAYS=90
 
 # ============================================
-# REMOTE SERVER (Option 1)
+# REMOTE SERVER CONFIGURATION (rsync/scp)
 # ============================================
-# For SSH/SCP backup to another server
-REMOTE_ENABLED=false
-REMOTE_SERVER="user@backup-server.com"
-REMOTE_BACKUP_DIR="/backups/tea-management"
-SSH_KEY_PATH="~/.ssh/id_rsa"
+# Set to "true" to enable syncing to another server
+ENABLE_REMOTE_SERVER="false"
+
+# Remote server details (when ENABLE_REMOTE_SERVER="true")
+REMOTE_SERVER="backup.example.com"      # IP or hostname
+REMOTE_USER="backup"                     # SSH username
+REMOTE_PORT="22"                         # SSH port
+REMOTE_PATH="/var/backups/tea-management"  # Path on remote server
+REMOTE_SSH_KEY="/root/.ssh/id_rsa"       # SSH key path
 
 # ============================================
-# AWS S3 (Option 2)
+# CLOUD BACKUP CONFIGURATION
 # ============================================
-# Prerequisites: Install AWS CLI and configure credentials
-# sudo apt install awscli
-# aws configure
-AWS_S3_ENABLED=false
-AWS_S3_BUCKET="your-bucket-name"
-AWS_REGION="us-east-1"
+# Set to "true" to enable cloud backup
+ENABLE_CLOUD_BACKUP="false"
+
+# Cloud provider options:
+#   "s3"           - Amazon S3
+#   "gcs"          - Google Cloud Storage
+#   "b2"           - Backblaze B2
+#   "s3-compatible" - DigitalOcean Spaces, MinIO, Wasabi, etc.
+CLOUD_PROVIDER="s3"
 
 # ============================================
-# GOOGLE CLOUD STORAGE (Option 3)
+# AWS S3 Configuration
 # ============================================
-# Prerequisites: Install gsutil and authenticate
-# curl https://sdk.cloud.google.com | bash
-# gcloud auth login
-GCS_ENABLED=false
+# Prerequisites:
+#   sudo apt install awscli -y
+#   aws configure
+# ============================================
+S3_BUCKET="your-backup-bucket"
+S3_PREFIX="tea-management"
+S3_STORAGE_CLASS="STANDARD_IA"
+# Storage classes: STANDARD, STANDARD_IA, ONEZONE_IA, GLACIER, DEEP_ARCHIVE
+
+# ============================================
+# Google Cloud Storage Configuration
+# ============================================
+# Prerequisites:
+#   curl https://sdk.cloud.google.com | bash
+#   gcloud auth login
+# ============================================
 GCS_BUCKET="your-gcs-bucket"
+GCS_PREFIX="tea-management"
 
 # ============================================
-# DROPBOX (Option 4)
+# Backblaze B2 Configuration
 # ============================================
-# Prerequisites: Install dropbox_uploader.sh
-# https://github.com/andreafabrizi/Dropbox-Uploader
-DROPBOX_ENABLED=false
-DROPBOX_DIR="/backups/tea-management"
+# Prerequisites:
+#   pip install b2
+#   b2 authorize-account
+# ============================================
+B2_BUCKET="your-b2-bucket"
+B2_PREFIX="tea-management"
 
 # ============================================
-# NOTIFICATIONS
+# S3-Compatible Storage
 # ============================================
-NOTIFICATION_EMAIL=""
-SLACK_WEBHOOK_URL=""
+# For DigitalOcean Spaces, MinIO, Wasabi, etc.
+# Uses S3_BUCKET and S3_PREFIX from above
+# ============================================
+S3_ENDPOINT="https://nyc3.digitaloceanspaces.com"
 
 # ============================================
-# APPLICATION BACKUP
+# EMAIL NOTIFICATION (optional)
 # ============================================
-APP_BACKUP_ENABLED=true
-APP_DIR="/var/www/tea-management"
+ENABLE_EMAIL_NOTIFICATION="false"
+EMAIL_TO="admin@example.com"
+
+# Prerequisites for email:
+#   sudo apt install mailutils -y
+#   # Configure postfix or use external SMTP

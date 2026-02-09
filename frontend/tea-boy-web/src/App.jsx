@@ -17,8 +17,8 @@ function App() {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center">
-        <div className="text-white text-2xl">Loading...</div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-blue-600 text-2xl">Loading...</div>
       </div>
     );
   }
@@ -26,14 +26,14 @@ function App() {
   return (
     <Routes>
       {/* Activation Route - Public */}
-      <Route path="/tenant/tea-boy/activate" element={<Activate />} />
+      <Route path="/tenant/kitchen/activate" element={<Activate />} />
 
       {/* Login Route */}
       <Route
-        path="/tenant/tea-boy/login"
+        path="/tenant/kitchen/login"
         element={
-          isAuthenticated && user?.role === 'TEA_BOY' ? (
-            <Navigate to="/tenant/tea-boy/dashboard" replace />
+          isAuthenticated && user?.role === 'KITCHEN' ? (
+            <Navigate to="/tenant/kitchen/dashboard" replace />
           ) : (
             <Login />
           )
@@ -42,30 +42,30 @@ function App() {
 
       {/* Dashboard Route */}
       <Route
-        path="/tenant/tea-boy/dashboard"
+        path="/tenant/kitchen/dashboard"
         element={
-          isAuthenticated && user?.role === 'TEA_BOY' ? (
+          isAuthenticated && user?.role === 'KITCHEN' ? (
             <TeaBoyDashboard />
           ) : (
-            <Navigate to="/tenant/tea-boy/login" replace />
+            <Navigate to="/tenant/kitchen/login" replace />
           )
         }
       />
 
-      {/* Default redirect for /tenant/tea-boy */}
+      {/* Default redirect for /tenant/kitchen */}
       <Route
-        path="/tenant/tea-boy"
+        path="/tenant/kitchen"
         element={
-          isAuthenticated && user?.role === 'TEA_BOY' ? (
-            <Navigate to="/tenant/tea-boy/dashboard" replace />
+          isAuthenticated && user?.role === 'KITCHEN' ? (
+            <Navigate to="/tenant/kitchen/dashboard" replace />
           ) : (
-            <Navigate to="/tenant/tea-boy/login" replace />
+            <Navigate to="/tenant/kitchen/login" replace />
           )
         }
       />
 
-      {/* 404 - Redirect to tea-boy login */}
-      <Route path="*" element={<Navigate to="/tenant/tea-boy/login" replace />} />
+      {/* 404 - Redirect to kitchen login */}
+      <Route path="*" element={<Navigate to="/tenant/kitchen/login" replace />} />
     </Routes>
   );
 }

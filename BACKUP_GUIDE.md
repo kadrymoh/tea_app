@@ -1,189 +1,350 @@
-# Database Backup & Restore Guide
+# دليل النسخ الاحتياطي والاستعادة | Backup & Restore Guide
 
-## Overview
-This guide explains how to backup and restore your PostgreSQL database for the Tea Management System.
+## نظرة عامة | Overview
 
----
-
-## Quick Commands
-
-### Manual Backup
-```bash
-# Create a backup now
-pg_dump -h localhost -U postgres tea_management | gzip > backup_$(date +%Y-%m-%d).sql.gz
-```
-
-### Restore from Backup
-```bash
-# Restore from a backup file
-gunzip -c backup_2026-01-20.sql.gz | psql -h localhost -U postgres tea_management
-```
+نظام نسخ احتياطي شامل لقاعدة بيانات Tea Management System يدعم:
+- نسخ احتياطي محلي (يومي، أسبوعي، شهري)
+- مزامنة مع سيرفر آخر (rsync/scp)
+- رفع للسحابة (AWS S3, Google Cloud, Backblaze B2)
+- إشعارات بالبريد الإلكتروني
 
 ---
 
-## Automatic Daily Backups (Recommended)
+## البدء السريع | Quick Start
 
-### Step 1: Configure the Backup Script
+### 1. إعداد التكوين | Setup Configuration
 
-1. Open the backup script:
 ```bash
-nano /path/to/tea-management-system/backend/scripts/backup.sh
+cd backend/scripts
+
+# نسخ ملف التكوين
+cp backup.config.example backup.config
+
+# تعديل الإعدادات
+nano backup.config
 ```
 
-2. Update these variables with your database credentials:
+**الإعدادات المطلوبة:**
 ```bash
 DB_NAME="tea_management"
 DB_USER="postgres"
+DB_PASSWORD="كلمة_المرور_هنا"
 DB_HOST="localhost"
 DB_PORT="5432"
 ```
 
-3. Set the password as an environment variable:
+### 2. تشغيل الإعداد | Run Setup
+
 ```bash
-export DB_PASSWORD="your_postgres_password"
+chmod +x setup-backup-cron.sh
+sudo ./setup-backup-cron.sh
 ```
 
-4. Make the script executable:
+### 3. اختبار النسخ الاحتياطي | Test Backup
+
 ```bash
-chmod +x /path/to/tea-management-system/backend/scripts/backup.sh
-```
-
-### Step 2: Setup Cron Job for Daily Backups
-
-1. Open crontab:
-```bash
-crontab -e
-```
-
-2. Add this line to run backup at 2 AM daily:
-```cron
-0 2 * * * DB_PASSWORD="your_password" /path/to/tea-management-system/backend/scripts/backup.sh
-```
-
-3. Save and exit
-
-### Step 3: Verify Backups
-```bash
-# List all backups
-ls -la /var/backups/tea-management/
-
-# Check backup log
-cat /var/log/tea-management-backup.log
+./backup.sh
 ```
 
 ---
 
-## Restore Database
+## الأوامر السريعة | Quick Commands
 
-### Option 1: Using the Restore Script
+| الأمر | الوصف |
+|-------|--------|
+| `./backup.sh` | تشغيل نسخ احتياطي الآن |
+| `./restore.sh --list` | عرض النسخ المتاحة |
+| `./restore.sh --latest` | استعادة آخر نسخة |
+| `tail -f /var/log/tea-management-backup.log` | متابعة السجل |
+| `crontab -l` | عرض المهام المجدولة |
+
+---
+
+## إعداد النسخ للسيرفر البعيد | Remote Server Backup
+
+### الخطوة 1: إعداد SSH Key
 
 ```bash
-# Make script executable
-chmod +x /path/to/tea-management-system/backend/scripts/restore.sh
+# على السيرفر الأصلي
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_backup
 
-# Run restore
-DB_PASSWORD="your_password" ./restore.sh /var/backups/tea-management/tea_management_2026-01-20_02-00-00.sql.gz
+# نسخ المفتاح للسيرفر البعيد
+ssh-copy-id -i ~/.ssh/id_rsa_backup.pub user@backup-server.com
 ```
 
-### Option 2: Manual Restore
+### الخطوة 2: تكوين backup.config
 
 ```bash
-# 1. Stop the application
+# تفعيل النسخ للسيرفر البعيد
+ENABLE_REMOTE_SERVER="true"
+
+# إعدادات السيرفر
+REMOTE_SERVER="backup-server.com"    # أو IP
+REMOTE_USER="backup"
+REMOTE_PORT="22"
+REMOTE_PATH="/var/backups/tea-management"
+REMOTE_SSH_KEY="/root/.ssh/id_rsa_backup"
+```
+
+### الخطوة 3: اختبار الاتصال
+
+```bash
+# اختبار SSH
+ssh -i ~/.ssh/id_rsa_backup backup@backup-server.com "echo 'Connection OK'"
+
+# تشغيل النسخ الاحتياطي
+./backup.sh
+```
+
+---
+
+## إعداد النسخ للسحابة | Cloud Backup Setup
+
+### AWS S3
+
+```bash
+# 1. تثبيت AWS CLI
+sudo apt install awscli -y
+
+# 2. تكوين AWS
+aws configure
+# AWS Access Key ID: xxxx
+# AWS Secret Access Key: xxxx
+# Default region: us-east-1
+# Default output format: json
+
+# 3. إنشاء Bucket
+aws s3 mb s3://tea-management-backups
+
+# 4. تكوين backup.config
+ENABLE_CLOUD_BACKUP="true"
+CLOUD_PROVIDER="s3"
+S3_BUCKET="tea-management-backups"
+S3_PREFIX="backups"
+S3_STORAGE_CLASS="STANDARD_IA"  # أرخص للتخزين طويل المدى
+```
+
+### Google Cloud Storage
+
+```bash
+# 1. تثبيت Google Cloud SDK
+curl https://sdk.cloud.google.com | bash
+exec -l $SHELL
+gcloud init
+
+# 2. إنشاء Bucket
+gsutil mb gs://tea-management-backups
+
+# 3. تكوين backup.config
+ENABLE_CLOUD_BACKUP="true"
+CLOUD_PROVIDER="gcs"
+GCS_BUCKET="tea-management-backups"
+GCS_PREFIX="backups"
+```
+
+### DigitalOcean Spaces (S3-Compatible)
+
+```bash
+# 1. إنشاء Space من لوحة التحكم
+
+# 2. تكوين AWS CLI للـ Spaces
+aws configure --profile digitalocean
+# Access Key: من DigitalOcean
+# Secret Key: من DigitalOcean
+# Region: nyc3
+
+# 3. تكوين backup.config
+ENABLE_CLOUD_BACKUP="true"
+CLOUD_PROVIDER="s3-compatible"
+S3_BUCKET="your-space-name"
+S3_PREFIX="backups"
+S3_ENDPOINT="https://nyc3.digitaloceanspaces.com"
+```
+
+---
+
+## استعادة النسخ الاحتياطي | Restore Backup
+
+### من نسخة محلية
+
+```bash
+# عرض النسخ المتاحة
+./restore.sh --list
+
+# استعادة آخر نسخة
+./restore.sh --latest
+
+# استعادة نسخة محددة
+./restore.sh /var/backups/tea-management/daily/tea_db_2026-01-31_02-00-00.sql.gz
+```
+
+### من AWS S3
+
+```bash
+./restore.sh --from-s3 s3://tea-management-backups/backups/daily/tea_db_2026-01-31.sql.gz
+```
+
+### من سيرفر بعيد
+
+```bash
+./restore.sh --from-remote /var/backups/tea-management/daily/tea_db_2026-01-31.sql.gz
+```
+
+### استعادة يدوية
+
+```bash
+# 1. إيقاف التطبيق
 pm2 stop backend
 
-# 2. Drop existing database (WARNING: This deletes all data!)
-psql -U postgres -c "DROP DATABASE IF EXISTS tea_management;"
+# 2. استعادة قاعدة البيانات
+gunzip -c backup.sql.gz | psql -U postgres tea_management
 
-# 3. Create new database
-psql -U postgres -c "CREATE DATABASE tea_management;"
+# 3. تحديث Prisma
+cd backend && npx prisma generate
 
-# 4. Restore from backup
-gunzip -c /var/backups/tea-management/tea_management_2026-01-20.sql.gz | psql -U postgres tea_management
-
-# 5. Regenerate Prisma client
-cd /path/to/backend
-npx prisma generate
-
-# 6. Restart application
+# 4. إعادة تشغيل التطبيق
 pm2 restart backend
 ```
 
 ---
 
-## Backup to Remote Server (Extra Safety)
+## جدول النسخ الاحتياطي | Backup Schedule
 
-For extra safety, copy backups to another server:
+| النوع | التوقيت | الاحتفاظ |
+|-------|---------|----------|
+| يومي | 2:00 صباحاً | 30 يوم |
+| أسبوعي | كل أحد | 12 أسبوع |
+| شهري | أول الشهر | 12 شهر |
 
-### Using rsync:
-```bash
-# Add to cron after backup completes
-rsync -avz /var/backups/tea-management/ user@remote-server:/backups/tea-management/
+---
+
+## هيكل الملفات | File Structure
+
 ```
+backend/scripts/
+├── backup.sh              # سكربت النسخ الاحتياطي الرئيسي
+├── restore.sh             # سكربت الاستعادة
+├── setup-backup-cron.sh   # إعداد المهام المجدولة
+├── backup.config.example  # مثال التكوين
+└── backup.config          # التكوين الفعلي (لا يُرفع لـ git)
 
-### Using AWS S3:
-```bash
-# Install AWS CLI first
-apt install awscli
-
-# Upload backup to S3
-aws s3 cp /var/backups/tea-management/tea_management_$(date +%Y-%m-%d)*.sql.gz s3://your-bucket-name/backups/
+/var/backups/tea-management/
+├── daily/                 # النسخ اليومية
+├── weekly/                # النسخ الأسبوعية
+└── monthly/               # النسخ الشهرية
 ```
 
 ---
 
-## Backup Best Practices
+## حل المشاكل | Troubleshooting
 
-1. **Test Restores Regularly**: At least once a month, test restoring a backup to ensure it works.
+### النسخ الاحتياطي فشل - صلاحيات
 
-2. **Keep Multiple Copies**: Store backups in multiple locations (local server + cloud).
-
-3. **Monitor Backup Jobs**: Check logs regularly to ensure backups are completing successfully.
-
-4. **Encrypt Sensitive Backups**: If storing in cloud, encrypt the backup files.
-
-5. **Document Everything**: Keep a log of when backups are taken and when restores are performed.
-
----
-
-## Troubleshooting
-
-### Backup fails with "permission denied"
 ```bash
-# Ensure the backup directory exists and has correct permissions
-mkdir -p /var/backups/tea-management
-chmod 755 /var/backups/tea-management
+# إنشاء المجلدات بالصلاحيات الصحيحة
+sudo mkdir -p /var/backups/tea-management/{daily,weekly,monthly}
+sudo chown -R $USER:$USER /var/backups/tea-management
 ```
 
-### Backup fails with "authentication failed"
+### فشل الاتصال بقاعدة البيانات
+
 ```bash
-# Create a .pgpass file for passwordless authentication
-echo "localhost:5432:tea_management:postgres:your_password" > ~/.pgpass
+# اختبار الاتصال
+psql -h localhost -U postgres -d tea_management -c "SELECT 1"
+
+# إنشاء ملف .pgpass لتجنب طلب كلمة المرور
+echo "localhost:5432:tea_management:postgres:YOUR_PASSWORD" > ~/.pgpass
 chmod 600 ~/.pgpass
 ```
 
-### Restore fails with "database in use"
+### فشل المزامنة مع السيرفر البعيد
+
 ```bash
-# Stop all connections first
-pm2 stop backend
-psql -U postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'tea_management';"
+# اختبار SSH
+ssh -i ~/.ssh/id_rsa_backup -p 22 user@server "echo OK"
+
+# التأكد من وجود المجلد على السيرفر البعيد
+ssh user@server "mkdir -p /var/backups/tea-management"
+```
+
+### فشل الرفع لـ S3
+
+```bash
+# اختبار AWS CLI
+aws s3 ls
+
+# اختبار الصلاحيات
+aws s3 cp test.txt s3://your-bucket/test.txt
+aws s3 rm s3://your-bucket/test.txt
 ```
 
 ---
 
-## Emergency Recovery
+## الاستعادة الطارئة | Emergency Recovery
 
-If the server completely crashes:
+إذا تعطل السيرفر بالكامل:
 
-1. **Setup a new server** with the same OS
-2. **Install PostgreSQL** and Node.js
-3. **Clone the repository**
-4. **Restore the database** from your latest backup
-5. **Configure environment variables** (.env file)
-6. **Run Prisma generate**: `npx prisma generate`
-7. **Start the application**: `pm2 start index.js --name backend`
+1. **إعداد سيرفر جديد** بنفس نظام التشغيل
+2. **تثبيت المتطلبات:**
+   ```bash
+   # PostgreSQL
+   sudo apt install postgresql postgresql-contrib
+
+   # Node.js
+   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+   sudo apt install nodejs
+
+   # PM2
+   npm install -g pm2
+   ```
+
+3. **استنساخ المشروع:**
+   ```bash
+   git clone <repository-url>
+   cd tea-management-system/backend
+   npm install
+   ```
+
+4. **إعداد قاعدة البيانات:**
+   ```bash
+   sudo -u postgres createdb tea_management
+   ```
+
+5. **تحميل واستعادة النسخة الاحتياطية:**
+   ```bash
+   # من S3
+   aws s3 cp s3://bucket/backups/latest.sql.gz ./
+
+   # استعادة
+   gunzip -c latest.sql.gz | psql -U postgres tea_management
+   ```
+
+6. **إعداد البيئة:**
+   ```bash
+   cp .env.example .env
+   nano .env  # تعديل الإعدادات
+   npx prisma generate
+   ```
+
+7. **تشغيل التطبيق:**
+   ```bash
+   pm2 start index.js --name backend
+   pm2 save
+   pm2 startup
+   ```
 
 ---
 
-## Contact
+## أفضل الممارسات | Best Practices
 
-For emergency support, contact your system administrator.
+1. **اختبر الاستعادة شهرياً** - تأكد أن النسخ تعمل
+2. **احتفظ بنسخ في أماكن متعددة** - محلي + سيرفر بعيد + سحابة
+3. **راقب السجلات** - تأكد من نجاح النسخ يومياً
+4. **شفّر النسخ الحساسة** - خاصة في السحابة
+5. **وثّق كل شيء** - سجل متى تم النسخ والاستعادة
+
+---
+
+## الدعم | Support
+
+للمساعدة الطارئة، تواصل مع مسؤول النظام.

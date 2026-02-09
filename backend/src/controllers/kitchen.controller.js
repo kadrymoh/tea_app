@@ -1,6 +1,7 @@
 // backend/src/controllers/kitchen.controller.js
 const { prisma } = require('../lib/prisma');
 const logger = require('../utils/logger.js');
+const bcrypt = require('bcryptjs');
 
 // ============================================
 // GET ALL KITCHENS
@@ -75,13 +76,39 @@ const getKitchenById = async (req, res) => {
 
 const createKitchen = async (req, res) => {
   try {
-    const { name, building, floor } = req.body;
+    const { name, building, floor, username, password } = req.body;
 
     // Validation
     if (!name) {
       return res.status(400).json({
         success: false,
         message: 'Kitchen name is required'
+      });
+    }
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username and password are required for kitchen login'
+      });
+    }
+
+    if (password.length < 4) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 4 characters'
+      });
+    }
+
+    // Check if username already exists
+    const existingUsername = await req.tenantPrisma.kitchen.findFirst({
+      where: { username }
+    });
+
+    if (existingUsername) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username already exists'
       });
     }
 
@@ -92,6 +119,9 @@ const createKitchen = async (req, res) => {
 
     const kitchenNumber = lastKitchen ? lastKitchen.kitchenNumber + 1 : 1;
 
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
     // Create kitchen
     const kitchen = await req.tenantPrisma.kitchen.create({
       data: {
@@ -99,6 +129,8 @@ const createKitchen = async (req, res) => {
         kitchenNumber,
         building: building || null,
         floor: floor || null,
+        username,
+        passwordHash,
         isActive: true
       }
     });
@@ -108,10 +140,13 @@ const createKitchen = async (req, res) => {
     const tenantName = req.tenantName || 'Unknown';
     logger.kitchen.create(adminEmail, tenantName, name, kitchenNumber, true);
 
+    // Return kitchen without passwordHash
+    const { passwordHash: _, ...kitchenData } = kitchen;
+
     res.status(201).json({
       success: true,
       message: 'Kitchen created successfully',
-      data: kitchen
+      data: kitchenData
     });
   } catch (error) {
     console.error('Error creating kitchen:', error);
@@ -133,7 +168,7 @@ const createKitchen = async (req, res) => {
 const updateKitchen = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, building, floor, isActive } = req.body;
+    const { name, building, floor, isActive, username, password } = req.body;
 
     // Check if kitchen exists
     const existingKitchen = await req.tenantPrisma.kitchen.findUnique({
@@ -147,12 +182,41 @@ const updateKitchen = async (req, res) => {
       });
     }
 
+    // Check if new username already exists (for different kitchen)
+    if (username && username !== existingKitchen.username) {
+      const existingUsername = await req.tenantPrisma.kitchen.findFirst({
+        where: {
+          username,
+          id: { not: id }
+        }
+      });
+
+      if (existingUsername) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username already exists'
+        });
+      }
+    }
+
     // Build update data
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (building !== undefined) updateData.building = building || null;
     if (floor !== undefined) updateData.floor = floor || null;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (username !== undefined) updateData.username = username;
+
+    // Hash new password if provided
+    if (password) {
+      if (password.length < 4) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password must be at least 4 characters'
+        });
+      }
+      updateData.passwordHash = await bcrypt.hash(password, 10);
+    }
 
     // Update kitchen
     const updatedKitchen = await req.tenantPrisma.kitchen.update({
@@ -165,10 +229,13 @@ const updateKitchen = async (req, res) => {
     const tenantName = req.tenantName || 'Unknown';
     logger.kitchen.update(adminEmail, tenantName, existingKitchen.name, updateData, true);
 
+    // Return kitchen without passwordHash
+    const { passwordHash: _, ...kitchenData } = updatedKitchen;
+
     res.json({
       success: true,
       message: 'Kitchen updated successfully',
-      data: updatedKitchen
+      data: kitchenData
     });
   } catch (error) {
     console.error('Error updating kitchen:', error);

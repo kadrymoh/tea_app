@@ -4,14 +4,13 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://teaapp.twaasol.com/tenant/tea-boy",
+    "url": "https://teaapp.twaasol.com/tenant/kitchen",
     "cleartext": true
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 2000,
-      "backgroundColor": "#0ea5e9",
-      "showSpinner": false
+      "launchShowDuration": 0,
+      "launchAutoHide": true
     },
     "LocalNotifications": {
       "smallIcon": "ic_notification",

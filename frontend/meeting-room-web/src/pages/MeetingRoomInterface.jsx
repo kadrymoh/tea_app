@@ -173,7 +173,7 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
     surfaceBg: 'bg-white',
     surfaceHover: 'hover:bg-slate-100',
     surfaceHighlight: 'bg-slate-50',
-    headerBg: 'bg-white/80',
+    headerBg: 'bg-gradient-to-r from-[#0a12f7] via-[#0086C4] to-[#0a12f7]',
     footerBg: 'bg-white/90',
     
     // Text
@@ -510,16 +510,16 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
       `}</style>
 
       {/* Header */}
-      <header className={`flex items-center justify-between px-8 py-5 ${theme.border} border-b ${theme.headerBg} backdrop-blur-sm sticky top-0 z-20`}>
+      <header className={`flex items-center justify-between px-8 py-5 ${theme.border} border-b ${theme.headerBg} backdrop-blur-sm sticky top-0 z-20`} style={{ direction: 'ltr' }}>
         <div className="flex items-center gap-4">
-          <div className={`flex items-center justify-center w-10 h-10 rounded-full ${theme.surfaceHighlight} ${theme.iconColor}`}>
+          <div className={`flex items-center justify-center w-10 h-10 rounded-full bg-white/20 text-white`}>
             <CoffeeIcon className="w-5 h-5" />
           </div>
           <div>
-            <h2 className={`${theme.textMain} text-lg font-bold leading-tight`}>
+            <h2 className="text-white text-lg font-bold leading-tight">
               {roomInfo?.name || 'Meeting Room'}
             </h2>
-            <p className={`${theme.textSecondary} text-sm font-medium`}>
+            <p className="text-white/80 text-sm font-medium">
               {currentTime.toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'en-US',
                 { hour: '2-digit', minute: '2-digit' })}
             </p>
@@ -528,13 +528,16 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
 
         {/* Center Title */}
         <div className="text-center flex-1 px-8">
-          <h1 className={`${theme.textMain} tracking-tight text-2xl font-bold`}>
+          <h1 className="text-white tracking-tight text-2xl font-bold">
             {t.refreshments}
           </h1>
-          <p className={`${theme.textSecondary} text-sm`}>{t.selectDrink}</p>
+          <p className="text-white/80 text-sm">{t.selectDrink}</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" style={{ direction: 'ltr', paddingRight: '60px' , paddingTop: "5px"}}>
+          {/* Hidden Button Spacer - always on the right for close button space */}
+          <div style={{ marginLeft: "10px", width: '100px', height: '48px', visibility: 'hidden' }}></div>
+
           {/* Cart Icon Button */}
           {cartCount > 0 && (
             <button
@@ -542,7 +545,7 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
               className={`relative flex items-center justify-center w-12 h-12 rounded-full bg-sky-500 hover:bg-sky-600 text-white transition-colors`}
             >
               <ShoppingCartIcon className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+              <span className="absolute -top-1 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                 {cartCount}
               </span>
             </button>
@@ -1211,8 +1214,8 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
                   onClick={() => {
                     // Clear history locally only (don't delete from database)
                     // Filter out delivered and cancelled orders from the UI
-                    setOrders(prev => prev.filter(order =>
-                      order.status !== 'delivered' && order.status !== 'cancelled'
+                    setOrderHistory(prev => prev.filter(order =>
+                      order.status !== 'DELIVERED' && order.status !== 'CANCELLED'
                     ));
                     setShowClearConfirm(false);
                   }}

@@ -1,0 +1,12 @@
+<Extensions>
+  <Version>1.10</Version>
+  <Panel>
+    <PanelId>tea_app_panel</PanelId>
+    <Type>Home</Type>
+    <Icon>Language</Icon>
+    <Order>3</Order>
+    <Color>#1170CF</Color>
+    <Name>Tea App</Name>
+    <ActivityType>Custom</ActivityType>
+  </Panel>
+</Extensions>

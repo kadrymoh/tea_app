@@ -22,30 +22,30 @@ router.get('/stats', ...requireRole('ADMIN'), getOrderStats);
 /**
  * @route   GET /api/orders
  * @desc    Get all orders
- * @access  Protected (Admin + Tea Boy)
+ * @access  Protected (Admin, Tea Boy, Kitchen)
  */
-router.get('/', ...requireRole('ADMIN', 'TEA_BOY'), getAllOrders);
+router.get('/', ...requireRole('ADMIN', 'TEA_BOY', 'KITCHEN'), getAllOrders);
 
 /**
  * @route   GET /api/orders/:id
  * @desc    Get order by ID
- * @access  Protected (Admin + Tea Boy)
+ * @access  Protected (Admin, Tea Boy, Kitchen)
  */
-router.get('/:id', ...requireRole('ADMIN', 'TEA_BOY'), getOrderById);
+router.get('/:id', ...requireRole('ADMIN', 'TEA_BOY', 'KITCHEN'), getOrderById);
 
 /**
  * @route   POST /api/orders
  * @desc    Create new order
- * @access  Protected (Admin + Tea Boy)
+ * @access  Protected (Admin, Tea Boy, Kitchen)
  */
-router.post('/', ...requireRole('ADMIN', 'TEA_BOY'), createOrder);
+router.post('/', ...requireRole('ADMIN', 'TEA_BOY', 'KITCHEN'), createOrder);
 
 /**
  * @route   PUT /api/orders/:id/status
  * @desc    Update order status
- * @access  Protected (Admin + Tea Boy)
+ * @access  Protected (Admin, Tea Boy, Kitchen)
  */
-router.put('/:id/status', ...requireRole('ADMIN', 'TEA_BOY'), updateOrderStatus);
+router.put('/:id/status', ...requireRole('ADMIN', 'TEA_BOY', 'KITCHEN'), updateOrderStatus);
 
 /**
  * @route   DELETE /api/orders/:id

@@ -40,7 +40,7 @@ const Activate = () => {
       if (res.ok && data.success) {
         setSuccess(true);
         setTimeout(() => {
-          navigate('/tenant/tea-boy/login');
+          navigate('/tenant/kitchen/login');
         }, 2000);
       } else {
         setError(data.message || 'Failed to activate account');
@@ -91,7 +91,7 @@ const Activate = () => {
 
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
               <p className="text-blue-700 text-sm">
-                <strong>Tea Boy Account:</strong> Your password has been set by your admin. Simply click activate to confirm your account.
+                <strong>Kitchen Account:</strong> Your password has been set by your admin. Simply click activate to confirm your account.
               </p>
             </div>
 
@@ -114,7 +114,7 @@ const Activate = () => {
             </button>
 
             <div className="text-center text-sm text-gray-600">
-              <a href="/tenant/tea-boy/login" className="text-blue-500 hover:text-blue-600 font-medium">
+              <a href="/tenant/kitchen/login" className="text-blue-500 hover:text-blue-600 font-medium">
                 Back to Login
               </a>
             </div>

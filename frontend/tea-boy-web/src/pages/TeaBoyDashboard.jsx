@@ -68,7 +68,7 @@ const TeaBoyDashboard = () => {
     primaryBorder: 'border-sky-400',
     primaryRing: 'ring-sky-400',
     primaryShadow: 'shadow-sky-500/20',
-    
+
     // Backgrounds
     mainBg: 'bg-slate-50',
     surfaceBg: 'bg-white',
@@ -76,40 +76,40 @@ const TeaBoyDashboard = () => {
     surfaceHighlight: 'bg-slate-50',
     headerBg: 'bg-white/80',
     footerBg: 'bg-white/90',
-    
+
     // Text
     textMain: 'text-slate-900',
     textSecondary: 'text-slate-500',
     textTertiary: 'text-slate-700',
-    
+
     // Borders
     border: 'border-slate-200',
     borderHover: 'hover:border-slate-300',
-    
+
     // Interactive elements
     buttonBg: 'bg-slate-100',
     buttonHover: 'hover:bg-slate-200',
     buttonText: 'text-slate-700',
-    
+
     // Shadows
     shadow: 'shadow-slate-200/50',
     shadowMd: 'shadow-md',
     shadowLg: 'shadow-lg',
-    
+
     // Icons
     iconColor: 'text-slate-700',
-    
+
     // Status colors
     statusNew: 'bg-green-500',
     statusNewBg: 'bg-green-50',
     statusNewText: 'text-green-600',
     statusNewBorder: 'border-green-400',
-    
+
     statusProgress: 'bg-orange-500',
     statusProgressBg: 'bg-orange-50',
     statusProgressText: 'text-orange-600',
     statusProgressBorder: 'border-orange-400',
-    
+
     statusDelivered: 'bg-blue-500',
     statusDeliveredBg: 'bg-blue-50',
     statusDeliveredText: 'text-blue-600',
@@ -142,6 +142,16 @@ const TeaBoyDashboard = () => {
     const setupNativeNotifications = async () => {
       if (Capacitor.isNativePlatform()) {
         try {
+          // Keep screen on to prevent app from being killed
+          try {
+            if ('wakeLock' in navigator) {
+              const wakeLock = await navigator.wakeLock.request('screen');
+              console.log('📱 Screen Wake Lock enabled');
+            }
+          } catch (e) {
+            console.log('❌ Wake Lock not supported:', e);
+          }
+
           const permission = await LocalNotifications.requestPermissions();
           console.log('📱 Local Notifications permission:', permission);
 
@@ -227,7 +237,7 @@ const TeaBoyDashboard = () => {
               id: notificationId,
               channelId,
               sound: channelId === 'new_order' ? 'new_order' :
-                     channelId === 'order_prepared' ? 'prepared' : 'new_order',
+                channelId === 'order_prepared' ? 'prepared' : 'new_order',
               smallIcon: 'ic_notification',
               iconColor: '#0ea5e9',
               ongoing: false,
@@ -320,15 +330,20 @@ const TeaBoyDashboard = () => {
   }, [KITCHEN_ID]);
 
   const loadMenu = useCallback(async () => {
+    if (!KITCHEN_ID) {
+      console.warn('⚠️ Cannot load menu: Kitchen ID is missing');
+      return;
+    }
     try {
-      const res = await fetch(`${API_BASE_URL}/menu`, { headers: getAuthHeaders() });
+      // Load menu items only for this specific kitchen
+      const res = await fetch(`${API_BASE_URL}/menu?kitchenId=${KITCHEN_ID}`, { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.success) setMenuItems(data.data || []);
     } catch (err) {
       console.error('Failed to load menu:', err);
       setError('Failed to load menu items');
     }
-  }, []);
+  }, [KITCHEN_ID]);
 
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
@@ -537,7 +552,8 @@ const TeaBoyDashboard = () => {
         imageUrl: itemForm.imageUrl || null,
         available: itemForm.available,
         hasSugar: itemForm.hasSugar,
-        isIceOnly: itemForm.hasIce || false
+        isIceOnly: itemForm.hasIce || false,
+        kitchenId: KITCHEN_ID // Send kitchen ID to create item only for this kitchen
       };
 
       console.log('📤 Sending menu item data:', body);
@@ -600,7 +616,7 @@ const TeaBoyDashboard = () => {
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
       await logout();
-      navigate('/tenant/tea-boy/login');
+      navigate('/tenant/kitchen/login');
     }
   };
 
@@ -800,19 +816,17 @@ const TeaBoyDashboard = () => {
                 <button
                   key={tab}
                   onClick={() => setActiveOrderTab(tab)}
-                  className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all flex items-center justify-center ${
-                    activeOrderTab === tab
-                      ? tab === 'new' ? `${theme.statusNew} text-white ${theme.shadowLg}`
+                  className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all flex items-center justify-center ${activeOrderTab === tab
+                    ? tab === 'new' ? `${theme.statusNew} text-white ${theme.shadowLg}`
                       : tab === 'progress' ? `${theme.statusProgress} text-white ${theme.shadowLg}`
-                      : `${theme.statusDelivered} text-white ${theme.shadowLg}`
-                      : `${theme.textSecondary} ${theme.surfaceHover}`
-                  }`}
+                        : `${theme.statusDelivered} text-white ${theme.shadowLg}`
+                    : `${theme.textSecondary} ${theme.surfaceHover}`
+                    }`}
                 >
                   <span>{tab === 'new' ? 'New Orders' : tab === 'progress' ? 'In Progress' : 'Delivered'}</span>
                   {filteredOrders[tab].length > 0 && (
-                    <span className={`ml-2 bg-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${
-                      tab === 'new' ? theme.statusNewText : tab === 'progress' ? theme.statusProgressText : theme.statusDeliveredText
-                    }`}>
+                    <span className={`ml-2 bg-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${tab === 'new' ? theme.statusNewText : tab === 'progress' ? theme.statusProgressText : theme.statusDeliveredText
+                      }`}>
                       {filteredOrders[tab].length}
                     </span>
                   )}
@@ -845,30 +859,26 @@ const TeaBoyDashboard = () => {
                 filteredOrders[activeOrderTab].map(order => (
                   <div
                     key={order.id}
-                    className={`${theme.surfaceBg} rounded-2xl p-5 border-l-4 ${theme.shadowLg} hover:shadow-xl transition-all ${
-                      activeOrderTab === 'new' ? theme.statusNewBorder :
+                    className={`${theme.surfaceBg} rounded-2xl p-5 border-l-4 ${theme.shadowLg} hover:shadow-xl transition-all ${activeOrderTab === 'new' ? theme.statusNewBorder :
                       activeOrderTab === 'progress' ? theme.statusProgressBorder : theme.statusDeliveredBorder
-                    }`}
+                      }`}
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className={`text-xl font-bold ${theme.textMain} mb-1`}>{order.room?.name || `Room #${order.roomId}`}</h3>
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
-                          activeOrderTab === 'new' ? theme.statusNewBg + ' ' + theme.statusNewText :
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${activeOrderTab === 'new' ? theme.statusNewBg + ' ' + theme.statusNewText :
                           activeOrderTab === 'progress' ? theme.statusProgressBg + ' ' + theme.statusProgressText : theme.statusDeliveredBg + ' ' + theme.statusDeliveredText
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            activeOrderTab === 'new' ? theme.statusNew + ' animate-pulse' :
+                          }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${activeOrderTab === 'new' ? theme.statusNew + ' animate-pulse' :
                             activeOrderTab === 'progress' ? theme.statusProgress : theme.statusDelivered
-                          }`}></span>
+                            }`}></span>
                           {activeOrderTab === 'new' && 'New Order'}
                           {activeOrderTab === 'progress' && 'In Progress'}
                           {activeOrderTab === 'delivered' && 'Delivered'}
                         </span>
                       </div>
-                      <div className={`flex items-center gap-1 font-bold px-3 py-1 rounded-full text-sm ${
-                        parseInt(getTimeElapsed(order.createdAt)) > 5 ? 'bg-red-50 text-red-600 border-2 border-red-200' : theme.surfaceHighlight + ' ' + theme.textSecondary
-                      }`}>
+                      <div className={`flex items-center gap-1 font-bold px-3 py-1 rounded-full text-sm ${parseInt(getTimeElapsed(order.createdAt)) > 5 ? 'bg-red-50 text-red-600 border-2 border-red-200' : theme.surfaceHighlight + ' ' + theme.textSecondary
+                        }`}>
                         <Clock className="w-4 h-4" />
                         <span>{getTimeElapsed(order.createdAt)}</span>
                       </div>
@@ -951,11 +961,10 @@ const TeaBoyDashboard = () => {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-6 py-3 rounded-xl font-bold whitespace-nowrap transition-all ${theme.shadowMd} ${
-                    selectedCategory === cat
-                      ? `${theme.primary} text-white ${theme.shadowLg}`
-                      : `${theme.surfaceBg} ${theme.textSecondary} ${theme.surfaceHover} ${theme.border} border`
-                  }`}
+                  className={`px-6 py-3 rounded-xl font-bold whitespace-nowrap transition-all ${theme.shadowMd} ${selectedCategory === cat
+                    ? `${theme.primary} text-white ${theme.shadowLg}`
+                    : `${theme.surfaceBg} ${theme.textSecondary} ${theme.surfaceHover} ${theme.border} border`
+                    }`}
                 >
                   {cat}
                 </button>
@@ -981,9 +990,8 @@ const TeaBoyDashboard = () => {
               {filteredMenu.map(item => (
                 <div
                   key={item.id}
-                  className={`group ${theme.surfaceBg} rounded-xl p-2 border transition-all ${theme.shadowMd} ${
-                    item.available ? `${theme.border} ${theme.borderHover} hover:${theme.shadowLg}` : `${theme.border} opacity-60`
-                  }`}
+                  className={`group ${theme.surfaceBg} rounded-xl p-2 border transition-all ${theme.shadowMd} ${item.available ? `${theme.border} ${theme.borderHover} hover:${theme.shadowLg}` : `${theme.border} opacity-60`
+                    }`}
                 >
                   <div className={`relative w-full h-20 rounded-lg overflow-hidden mb-2 ${theme.surfaceHighlight} flex items-center justify-center`}>
                     {!item.available && (
@@ -1115,9 +1123,8 @@ const TeaBoyDashboard = () => {
                           key={emoji}
                           type="button"
                           onClick={() => setItemForm((prev) => ({ ...prev, emoji: emoji, imageUrl: null }))}
-                          className={`text-3xl p-1 rounded ${theme.surfaceHover} transition-all ${
-                            itemForm.emoji === emoji && !itemForm.imageUrl ? `${theme.primary} ring-2 ${theme.primaryRing}` : ''
-                          }`}
+                          className={`text-3xl p-1 rounded ${theme.surfaceHover} transition-all ${itemForm.emoji === emoji && !itemForm.imageUrl ? `${theme.primary} ring-2 ${theme.primaryRing}` : ''
+                            }`}
                         >
                           {emoji}
                         </button>

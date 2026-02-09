@@ -1,7 +1,7 @@
 // backend/src/routes/auth.routes.js
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const { login, logout, refreshToken, getCurrentUser, forcePasswordChange } = require('../controllers/auth.controller.js');
+const { login, logout, refreshToken, getCurrentUser, forcePasswordChange, kitchenLogin, getCurrentKitchen } = require('../controllers/auth.controller.js');
 const { authenticateToken } = require('../middleware/auth.middleware.js');
 
 const router = express.Router();
@@ -49,5 +49,19 @@ router.get('/me', authenticateToken, getCurrentUser);
  * @access  Protected
  */
 router.post('/force-password-change', authenticateToken, forcePasswordChange);
+
+/**
+ * @route   POST /api/auth/kitchen/login
+ * @desc    Login kitchen with username/password
+ * @access  Public
+ */
+router.post('/kitchen/login', loginLimiter, kitchenLogin);
+
+/**
+ * @route   GET /api/auth/kitchen/me
+ * @desc    Get current authenticated kitchen
+ * @access  Protected
+ */
+router.get('/kitchen/me', authenticateToken, getCurrentKitchen);
 
 module.exports = router;

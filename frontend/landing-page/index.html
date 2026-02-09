@@ -13,22 +13,31 @@
         }
 
         body {
-            background: linear-gradient(135deg, #132bff 0%, #00c3ff 100%);
+            background: #f8fafc;
             min-height: 100vh;
         }
 
         .card {
             transition: all 0.3s ease;
+            border: 2px solid #e2e8f0;
         }
 
         .card:hover {
             transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
         }
 
         .icon {
             font-size: 4rem;
             margin-bottom: 1rem;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #000000 0%, #141414 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
     </style>
 </head>
@@ -37,10 +46,10 @@
         <!-- Header -->
         <div class="text-center mb-12">
             <div class="text-8xl mb-4">🫖</div>
-            <h1 class="text-5xl font-black text-white mb-4">
+            <h1 class="text-5xl font-black gradient-text mb-4">
                 Tea Management System
             </h1>
-            <p class="text-xl text-white/90">
+            <p class="text-xl text-gray-600">
                 Choose Your Portal
             </p>
         </div>
@@ -63,9 +72,9 @@
             </a>
 
             <!-- Tea Boy Card -->
-            <a href="/tenant/tea-boy" class="card bg-white rounded-2xl p-10 text-center cursor-pointer block">
+            <a href="/tenant/kitchen" class="card bg-white rounded-2xl p-10 text-center cursor-pointer block">
                 <div class="icon">☕</div>
-                <h2 class="text-3xl font-bold text-gray-800 mb-4">Tea Boy</h2>
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">Kitchen</h2>
                 <p class="text-gray-600 mb-8 text-lg">
                     Manage menu and orders
                 </p>
@@ -79,9 +88,9 @@
         </div>
 
         <!-- Footer -->
-        <div class="text-center mt-12 text-white/80">
+        <div class="text-center mt-12 text-gray-600">
             <p class="text-lg">
-                Tea Management System v2.0.0
+                Tea Management System v1.0.0
             </p>
             <p class="text-sm mt-2">
                 All Rights Reserved © 2025

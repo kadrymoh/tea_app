@@ -1,0 +1,50 @@
+<Extensions>
+  <Version>1.10</Version>
+
+  <!-- Close Button Widget - Black X -->
+  <Panel>
+    <Order>1</Order>
+    <Location>HomeScreenAndCallControls</Location>
+    <Icon>Proximity</Icon>
+    <Color>#000000</Color>
+    <Name>Close Tea App</Name>
+    <ActivityType>Custom</ActivityType>
+
+    <Page>
+      <Name>Tea App Controls</Name>
+      <Row>
+        <Name>Close App</Name>
+        <Widget>
+          <WidgetId>tea_close_button</WidgetId>
+          <Name>✕</Name>
+          <Type>Button</Type>
+          <Options>size=4;icon=Close</Options>
+        </Widget>
+      </Row>
+    </Page>
+  </Panel>
+
+  <!-- Open Tea App Button -->
+  <Panel>
+    <Order>2</Order>
+    <PanelId>tea_open_panel</PanelId>
+    <Location>HomeScreen</Location>
+    <Icon>Language</Icon>
+    <Color>#1170CF</Color>
+    <Name>Open Tea App</Name>
+    <ActivityType>Custom</ActivityType>
+
+    <Page>
+      <Name>Open App</Name>
+      <Row>
+        <Name>Tea Service</Name>
+        <Widget>
+          <WidgetId>tea_open</WidgetId>
+          <Name>☕ Open Tea App</Name>
+          <Type>Button</Type>
+          <Options>size=4</Options>
+        </Widget>
+      </Row>
+    </Page>
+  </Panel>
+</Extensions>

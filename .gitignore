@@ -5,6 +5,9 @@
 .env.*.local
 *.env
 
+# Backup configuration (contains passwords)
+backend/scripts/backup.config
+
 # Dependencies
 node_modules/
 */node_modules/
