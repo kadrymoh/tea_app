@@ -317,8 +317,10 @@ model Order {
   assignedToUserId String?
   assignedToUser   User?   @relation("AssignedOrders", fields: [assignedToUserId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  preparedAt  DateTime?
+  deliveredAt DateTime?
 
   items OrderItem[]
 }

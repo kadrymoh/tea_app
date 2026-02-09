@@ -48,31 +48,25 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-6">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute w-96 h-96 bg-purple-600/20 rounded-full blur-3xl -top-48 -left-48"></div>
-        <div className="absolute w-96 h-96 bg-pink-600/20 rounded-full blur-3xl -bottom-48 -right-48"></div>
-      </div>
-
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       {/* Login Card */}
-      <div className="relative bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full border border-slate-800 shadow-2xl">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl border border-gray-200">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="p-4 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl">
+          <div className="p-4 bg-blue-500 rounded-2xl">
             <Coffee className="w-12 h-12 text-white" />
           </div>
         </div>
 
         {/* Title */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-slate-400">Sign in to your company dashboard</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome Back</h1>
+          <p className="text-gray-500">Sign in to your company dashboard</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 bg-red-500/10 border-2 border-red-500 text-red-400 rounded-xl p-4 flex items-start gap-3">
+          <div className="mb-6 bg-red-50 border border-red-400 text-red-600 rounded-xl p-4 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <span className="text-sm">{error}</span>
           </div>
@@ -82,17 +76,17 @@ const Login = () => {
         <form onSubmit={handleLogin} className="space-y-5">
           {/* Email Input */}
           <div>
-            <label className="text-white font-semibold mb-2 block text-sm">
+            <label className="text-gray-700 font-semibold mb-2 block text-sm">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@company.com"
-                className="w-full pl-12 pr-4 py-3 bg-slate-800/50 text-white rounded-xl border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 text-gray-800 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                 required
                 disabled={loading}
               />
@@ -101,17 +95,17 @@ const Login = () => {
 
           {/* Password Input */}
           <div>
-            <label className="text-white font-semibold mb-2 block text-sm">
+            <label className="text-gray-700 font-semibold mb-2 block text-sm">
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-12 pr-4 py-3 bg-slate-800/50 text-white rounded-xl border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 text-gray-800 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                 required
                 disabled={loading}
               />
@@ -122,7 +116,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25"
+            className="w-full py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
           >
             {loading ? (
               <>
@@ -137,8 +131,8 @@ const Login = () => {
 
         {/* Footer */}
         <div className="mt-6 text-center">
-          <p className="text-slate-500 text-sm">
-            Tea Management System v2.0
+          <p className="text-gray-400 text-sm">
+            Tea Management System v1.0
           </p>
         </div>
       </div>

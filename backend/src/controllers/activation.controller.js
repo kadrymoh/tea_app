@@ -1,6 +1,7 @@
 // backend/src/controllers/activation.controller.js
 const bcrypt = require('bcryptjs');
 const { prisma } = require('../lib/prisma');
+const logger = require('../utils/logger.js');
 
 // ============================================
 // VERIFY EMAIL WITH TOKEN
@@ -160,6 +161,10 @@ const activateAccount = async (req, res) => {
       data: updateData
     });
 
+    // Log activation
+    const tenantName = user.tenant?.name || 'Super Admin';
+    logger.user.activate(user.email, tenantName, true);
+
     res.json({
       success: true,
       message: isTeaBoy
@@ -175,6 +180,7 @@ const activateAccount = async (req, res) => {
     });
   } catch (error) {
     console.error('Error activating account:', error);
+    logger.user.activate(req.body?.token?.slice(0, 8) || 'Unknown', 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to activate account',

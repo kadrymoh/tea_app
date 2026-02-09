@@ -1,5 +1,6 @@
 // backend/src/controllers/menu.controller.js
 const { prisma } = require('../lib/prisma');
+const logger = require('../utils/logger.js');
 
 // ============================================
 // GET ALL MENU ITEMS
@@ -149,6 +150,20 @@ const createMenuItem = async (req, res) => {
 
     console.log(`✅ Created menu item "${name}" for ${kitchens.length} kitchens`);
 
+    // Emit socket event for real-time menu update
+    if (req.app.locals.io) {
+      req.app.locals.io.emit('menu-update', {
+        action: 'create',
+        item: menuItems[0]
+      });
+      console.log('🔔 Emitted menu-update event for new item');
+    }
+
+    // Log menu item creation
+    const teaBoyEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.menu.create(teaBoyEmail, tenantName, name, kitchens[0]?.kitchenNumber || 0, true);
+
     res.status(201).json({
       success: true,
       message: `Menu item created successfully for ${kitchens.length} kitchen(s)`,
@@ -157,6 +172,7 @@ const createMenuItem = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating menu item:', error);
+    logger.menu.create(req.user?.email || 'Unknown', 'Unknown', req.body?.name || 'Unknown', 0, false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to create menu item',
@@ -238,6 +254,20 @@ const updateMenuItem = async (req, res) => {
       }
     });
 
+    // Emit socket event for real-time menu update
+    if (req.app.locals.io) {
+      req.app.locals.io.emit('menu-update', {
+        action: 'update',
+        item: updatedItem
+      });
+      console.log('🔔 Emitted menu-update event for updated item');
+    }
+
+    // Log menu item update
+    const teaBoyEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.menu.update(teaBoyEmail, tenantName, existingItem.name, updateData, true);
+
     res.json({
       success: true,
       message: `Menu item updated successfully across ${allItemsWithSameName.length} kitchen(s)`,
@@ -246,6 +276,7 @@ const updateMenuItem = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating menu item:', error);
+    logger.menu.update(req.user?.email || 'Unknown', 'Unknown', req.params?.id || 'Unknown', {}, false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to update menu item',
@@ -290,6 +321,21 @@ const deleteMenuItem = async (req, res) => {
 
     console.log(`✅ Deleted menu item "${existingItem.name}" from ${allItemsWithSameName.length} kitchens`);
 
+    // Emit socket event for real-time menu update
+    if (req.app.locals.io) {
+      req.app.locals.io.emit('menu-update', {
+        action: 'delete',
+        itemId: id,
+        itemName: existingItem.name
+      });
+      console.log('🔔 Emitted menu-update event for deleted item');
+    }
+
+    // Log menu item deletion
+    const teaBoyEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.menu.delete(teaBoyEmail, tenantName, existingItem.name, true);
+
     res.json({
       success: true,
       message: `Menu item deleted successfully from ${allItemsWithSameName.length} kitchen(s)`,
@@ -297,6 +343,7 @@ const deleteMenuItem = async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting menu item:', error);
+    logger.menu.delete(req.user?.email || 'Unknown', 'Unknown', req.params?.id || 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to delete menu item',
@@ -332,6 +379,20 @@ const toggleAvailability = async (req, res) => {
         available: !existingItem.available
       }
     });
+
+    // Emit socket event for real-time menu update
+    if (req.app.locals.io) {
+      req.app.locals.io.emit('menu-item-update', {
+        action: 'availability',
+        item: updatedItem
+      });
+      console.log('🔔 Emitted menu-item-update event for availability change');
+    }
+
+    // Log availability toggle
+    const teaBoyEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.menu.toggleAvailability(teaBoyEmail, tenantName, existingItem.name, updatedItem.available);
 
     res.json({
       success: true,

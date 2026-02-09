@@ -1,23 +1,23 @@
-// frontend/super-admin-web/src/components/CompanyDetailsModal.jsx
+// frontend/super-admin-web/src/components/CustomerDetailsModal.jsx
 import React, { useState, useEffect } from 'react';
-import { 
-  X, Building2, Users, DoorOpen, Coffee, Package, 
-  TrendingUp, Clock, CheckCircle, AlertCircle 
+import {
+  X, Building2, Users, DoorOpen, Coffee, Package,
+  TrendingUp, Clock, CheckCircle, AlertCircle
 } from 'lucide-react';
 
-const CompanyDetailsModal = ({ company, onClose, theme, API_BASE_URL }) => {
+const CustomerDetailsModal = ({ company, onClose, theme, API_BASE_URL }) => {
   const [details, setDetails] = useState(null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadCompanyDetails();
+    loadCustomerDetails();
   }, [company.id]);
 
-  const loadCompanyDetails = async () => {
+  const loadCustomerDetails = async () => {
     try {
       setLoading(true);
-      
+
       const [detailsRes, statsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/super-admin/tenants/${company.id}`),
         fetch(`${API_BASE_URL}/super-admin/tenants/${company.id}/stats`)
@@ -29,7 +29,7 @@ const CompanyDetailsModal = ({ company, onClose, theme, API_BASE_URL }) => {
       if (detailsData.success) setDetails(detailsData.data);
       if (statsData.success) setStats(statsData.data);
     } catch (err) {
-      console.error('Failed to load company details:', err);
+      console.error('Failed to load customer details:', err);
     } finally {
       setLoading(false);
     }
@@ -71,7 +71,7 @@ const CompanyDetailsModal = ({ company, onClose, theme, API_BASE_URL }) => {
           </button>
         </div>
 
-        {/* Company Info */}
+        {/* Customer Info */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className={`${theme.surface} rounded-xl p-4 border ${theme.border}`}>
             <p className={`text-sm ${theme.textSecondary} mb-1`}>Plan</p>
@@ -83,8 +83,8 @@ const CompanyDetailsModal = ({ company, onClose, theme, API_BASE_URL }) => {
           <div className={`${theme.surface} rounded-xl p-4 border ${theme.border}`}>
             <p className={`text-sm ${theme.textSecondary} mb-1`}>Status</p>
             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
-              company.isActive 
-                ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+              company.isActive
+                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                 : 'bg-red-500/10 text-red-400 border border-red-500/20'
             }`}>
               {company.isActive ? (
@@ -186,8 +186,8 @@ const CompanyDetailsModal = ({ company, onClose, theme, API_BASE_URL }) => {
                         </td>
                         <td className="py-3 px-4">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            user.isActive 
-                              ? 'bg-green-500/10 text-green-400' 
+                            user.isActive
+                              ? 'bg-green-500/10 text-green-400'
                               : 'bg-red-500/10 text-red-400'
                           }`}>
                             {user.isActive ? 'Active' : 'Inactive'}
@@ -265,4 +265,4 @@ const CompanyDetailsModal = ({ company, onClose, theme, API_BASE_URL }) => {
   );
 };
 
-export default CompanyDetailsModal;
+export default CustomerDetailsModal;

@@ -18,6 +18,13 @@ const injectTenantContext = async (req, res, next) => {
     const tenantId = req.user.tenantId;
     console.log('✅ Tenant Context Injected:', tenantId, 'for user:', req.user.email);
 
+    // Get tenant name for logging
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true }
+    });
+    req.tenantName = tenant?.name || 'Unknown';
+
     // Create Prisma client extension with automatic tenant filtering
     req.tenantPrisma = prisma.$extends({
       query: {

@@ -23,6 +23,7 @@ const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
   const [tenantInfo, setTenantInfo] = useState(null);
 
   // Logout handler
@@ -162,6 +163,8 @@ const AdminPanel = () => {
         setRoomModal(null);
         setRoomForm({ name: '', floor: 1, building: 'Main Building', kitchenId: null, capacity: 10 });
         setError(null);
+        setSuccessMessage('Room added successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
       } else {
         console.error('❌ Failed to create room:', data.error);
         setError(data.error || 'Failed to add room');
@@ -184,6 +187,10 @@ const AdminPanel = () => {
         setRooms(prev => prev.map(r => r.id === roomModal.id ? data.data : r));
         setRoomModal(null);
         setError(null);
+        setSuccessMessage('Room updated successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        setError(data.message || 'Failed to update room');
       }
     } catch (err) {
       setError('Failed to update room');
@@ -191,7 +198,7 @@ const AdminPanel = () => {
   };
 
   const deleteRoom = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this room?')) return;
+    if (!window.confirm('Are you sure you want to delete this room? All orders associated with this room will also be deleted.')) return;
     try {
       const res = await fetch(`${API_BASE_URL}/rooms/${id}`, {
         method: 'DELETE',
@@ -201,6 +208,10 @@ const AdminPanel = () => {
       if (data.success) {
         setRooms(prev => prev.filter(r => r.id !== id));
         setError(null);
+        setSuccessMessage('Room deleted successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        setError(data.message || 'Failed to delete room');
       }
     } catch (err) {
       setError('Failed to delete room');
@@ -268,6 +279,8 @@ const AdminPanel = () => {
         setKitchenModal(null);
         setKitchenForm({ name: '', floor: 1, building: 'Main Building' });
         setError(null);
+        setSuccessMessage('Kitchen added successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
       } else {
         console.error('❌ Failed to create kitchen:', data.error);
         setError(data.error || 'Failed to add kitchen');
@@ -290,6 +303,10 @@ const AdminPanel = () => {
         setKitchens(prev => prev.map(k => k.id === kitchenModal.id ? data.data : k));
         setKitchenModal(null);
         setError(null);
+        setSuccessMessage('Kitchen updated successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        setError(data.message || 'Failed to update kitchen');
       }
     } catch (err) {
       setError('Failed to update kitchen');
@@ -297,19 +314,21 @@ const AdminPanel = () => {
   };
 
   const deleteKitchen = async (id) => {
-    const assignedRooms = rooms.filter(r => r.kitchenId === id);
-    if (assignedRooms.length > 0) {
-      setError('Cannot delete kitchen with assigned rooms');
-      return;
-    }
     if (!window.confirm('Are you sure you want to delete this kitchen?')) return;
     try {
-      await fetch(`${API_BASE_URL}/kitchens/${id}`, { 
+      const res = await fetch(`${API_BASE_URL}/kitchens/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-      setKitchens(prev => prev.filter(k => k.id !== id));
-      setError(null);
+      const data = await res.json();
+      if (data.success) {
+        setKitchens(prev => prev.filter(k => k.id !== id));
+        setError(null);
+        setSuccessMessage('Kitchen deleted successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        setError(data.message || 'Failed to delete kitchen');
+      }
     } catch (err) {
       setError('Failed to delete kitchen');
     }
@@ -351,6 +370,8 @@ const AdminPanel = () => {
         setUserModal(null);
         setUserForm({ name: '', email: '', phone: '', kitchenId: null, role: 'TEA_BOY', password: '' });
         setError(null);
+        setSuccessMessage('User added successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
       } else {
         console.error('❌ Failed to create tea boy:', data.error);
         setError(data.error || 'Failed to add user');
@@ -386,6 +407,8 @@ const AdminPanel = () => {
         setUserModal(null);
         setUserForm({ name: '', email: '', phone: '', kitchenId: null, role: 'TEA_BOY', password: '' });
         setError(null);
+        setSuccessMessage('User updated successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
         console.log('✅ User updated and list reloaded');
       } else {
         setError(data.error || 'Failed to update user');
@@ -399,12 +422,19 @@ const AdminPanel = () => {
   const deleteUser = async (id) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
-      await fetch(`${API_BASE_URL}/users/${id}`, { 
+      const res = await fetch(`${API_BASE_URL}/users/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-      setUsers(prev => prev.filter(u => u.id !== id));
-      setError(null);
+      const data = await res.json();
+      if (data.success) {
+        setUsers(prev => prev.filter(u => u.id !== id));
+        setError(null);
+        setSuccessMessage('User deleted successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        setError(data.message || 'Failed to delete user');
+      }
     } catch (err) {
       setError('Failed to delete user');
     }
@@ -598,15 +628,6 @@ const AdminPanel = () => {
                   {activeTab === 'settings' && 'Account settings and password management'}
                 </p>
               </div>
-              {error && (
-                <div className="flex items-center space-x-2 px-4 py-2 bg-red-500/20 border border-red-500 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-400" />
-                  <span className="text-red-400 text-sm">{error}</span>
-                  <button onClick={() => setError(null)}>
-                    <X className="w-4 h-4 text-red-400 hover:text-red-300" />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
@@ -744,6 +765,25 @@ const AdminPanel = () => {
             {/* ROOMS TAB */}
             {!loading && activeTab === 'rooms' && (
               <div>
+                {/* Error/Success Messages */}
+                {error && (
+                  <div className="flex items-center space-x-2 px-4 py-3 mb-4 bg-red-500/20 border border-red-500 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                    <span className="text-red-400 text-sm flex-1">{error}</span>
+                    <button onClick={() => setError(null)}>
+                      <X className="w-4 h-4 text-red-400 hover:text-red-300" />
+                    </button>
+                  </div>
+                )}
+                {successMessage && (
+                  <div className="flex items-center space-x-2 px-4 py-3 mb-4 bg-green-500/20 border border-green-500 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <span className="text-green-400 text-sm flex-1">{successMessage}</span>
+                    <button onClick={() => setSuccessMessage('')}>
+                      <X className="w-4 h-4 text-green-400 hover:text-green-300" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex justify-between items-center mb-6">
                   <p className={theme.textSecondary}>{rooms.length} rooms configured</p>
                   <button
@@ -832,6 +872,25 @@ const AdminPanel = () => {
             {/* KITCHENS TAB */}
             {!loading && activeTab === 'kitchens' && (
               <div>
+                {/* Error/Success Messages */}
+                {error && (
+                  <div className="flex items-center space-x-2 px-4 py-3 mb-4 bg-red-500/20 border border-red-500 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                    <span className="text-red-400 text-sm flex-1">{error}</span>
+                    <button onClick={() => setError(null)}>
+                      <X className="w-4 h-4 text-red-400 hover:text-red-300" />
+                    </button>
+                  </div>
+                )}
+                {successMessage && (
+                  <div className="flex items-center space-x-2 px-4 py-3 mb-4 bg-green-500/20 border border-green-500 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <span className="text-green-400 text-sm flex-1">{successMessage}</span>
+                    <button onClick={() => setSuccessMessage('')}>
+                      <X className="w-4 h-4 text-green-400 hover:text-green-300" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex justify-between items-center mb-6">
                   <p className={theme.textSecondary}>{kitchens.length} kitchens configured</p>
                   <button
@@ -912,8 +971,7 @@ const AdminPanel = () => {
                           </button>
                           <button
                             onClick={() => deleteKitchen(kitchen.id)}
-                            disabled={assignedRooms.length > 0}
-                            className="flex-1 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-all font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="flex-1 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-all font-semibold text-sm"
                           >
                             <Trash2 className="inline w-4 h-4 mr-1" />
                             Delete
@@ -929,6 +987,25 @@ const AdminPanel = () => {
             {/* USERS TAB */}
             {!loading && activeTab === 'users' && (
               <div>
+                {/* Error/Success Messages */}
+                {error && (
+                  <div className="flex items-center space-x-2 px-4 py-3 mb-4 bg-red-500/20 border border-red-500 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                    <span className="text-red-400 text-sm flex-1">{error}</span>
+                    <button onClick={() => setError(null)}>
+                      <X className="w-4 h-4 text-red-400 hover:text-red-300" />
+                    </button>
+                  </div>
+                )}
+                {successMessage && (
+                  <div className="flex items-center space-x-2 px-4 py-3 mb-4 bg-green-500/20 border border-green-500 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <span className="text-green-400 text-sm flex-1">{successMessage}</span>
+                    <button onClick={() => setSuccessMessage('')}>
+                      <X className="w-4 h-4 text-green-400 hover:text-green-300" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <p className={theme.textSecondary}>
@@ -1582,16 +1659,24 @@ const AdminPanel = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={`${theme.text} font-semibold mb-2 block`}>Role *</label>
-                  <select
-                    value={userForm.role || 'TEA_BOY'}
-                    onChange={(e) => setUserForm(prev => ({ ...prev, role: e.target.value, kitchenId: e.target.value === 'ADMIN' ? null : prev.kitchenId }))}
-                    className={`w-full px-4 py-3 ${theme.input} border rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-lg`}
-                  >
-                    <option value="TEA_BOY">Tea Boy</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
+                  {userModal.isNew ? (
+                    <select
+                      value={userForm.role || 'TEA_BOY'}
+                      onChange={(e) => setUserForm(prev => ({ ...prev, role: e.target.value, kitchenId: e.target.value === 'ADMIN' ? null : prev.kitchenId }))}
+                      className={`w-full px-4 py-3 ${theme.input} border rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-lg`}
+                    >
+                      <option value="TEA_BOY">Tea Boy</option>
+                      <option value="ADMIN">Admin</option>
+                    </select>
+                  ) : (
+                    <div className={`w-full px-4 py-3 ${theme.input} border rounded-xl opacity-60 cursor-not-allowed`}>
+                      {userForm.role === 'ADMIN' ? 'Admin' : 'Tea Boy'}
+                    </div>
+                  )}
                   <p className={`text-xs ${theme.textSecondary} mt-1`}>
-                    Admins have full access, Tea Boys manage orders
+                    {userModal.isNew
+                      ? 'Admins have full access, Tea Boys manage orders'
+                      : 'Role cannot be changed after creation'}
                   </p>
                 </div>
                 <div>

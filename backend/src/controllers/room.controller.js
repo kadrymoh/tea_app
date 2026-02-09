@@ -1,6 +1,7 @@
 // backend/src/controllers/room.controller.js
 const crypto = require('crypto');
 const { prisma } = require('../lib/prisma');
+const logger = require('../utils/logger.js');
 
 // ============================================
 // GET ALL ROOMS
@@ -133,6 +134,11 @@ const createRoom = async (req, res) => {
       }
     });
 
+    // Log room creation
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.room.create(adminEmail, tenantName, name, kitchen.kitchenNumber, true);
+
     res.status(201).json({
       success: true,
       message: 'Room created successfully',
@@ -140,6 +146,9 @@ const createRoom = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating room:', error);
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.room.create(adminEmail, tenantName, req.body?.name || 'Unknown', 0, false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to create room',
@@ -207,6 +216,11 @@ const updateRoom = async (req, res) => {
       }
     });
 
+    // Log room update
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.room.update(adminEmail, tenantName, existingRoom.name, updateData, true);
+
     res.json({
       success: true,
       message: 'Room updated successfully',
@@ -214,6 +228,9 @@ const updateRoom = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating room:', error);
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.room.update(adminEmail, tenantName, req.params?.id || 'Unknown', {}, false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to update room',
@@ -232,7 +249,11 @@ const deleteRoom = async (req, res) => {
 
     // Check if room exists
     const existingRoom = await req.tenantPrisma.room.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        orders: true,
+        devices: true
+      }
     });
 
     if (!existingRoom) {
@@ -242,10 +263,36 @@ const deleteRoom = async (req, res) => {
       });
     }
 
-    // Delete room
+    // Delete related data first (due to foreign key constraints)
+    // 1. Delete order items for orders in this room
+    if (existingRoom.orders.length > 0) {
+      const orderIds = existingRoom.orders.map(o => o.id);
+      await req.tenantPrisma.orderItem.deleteMany({
+        where: { orderId: { in: orderIds } }
+      });
+
+      // 2. Delete orders for this room
+      await req.tenantPrisma.order.deleteMany({
+        where: { roomId: id }
+      });
+    }
+
+    // 3. Delete room devices
+    if (existingRoom.devices.length > 0) {
+      await req.tenantPrisma.roomDevice.deleteMany({
+        where: { roomId: id }
+      });
+    }
+
+    // 4. Finally delete the room
     await req.tenantPrisma.room.delete({
       where: { id }
     });
+
+    // Log room deletion
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.room.delete(adminEmail, tenantName, existingRoom.name, true);
 
     res.json({
       success: true,
@@ -253,6 +300,9 @@ const deleteRoom = async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting room:', error);
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.room.delete(adminEmail, tenantName, req.params?.id || 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to delete room',
@@ -609,6 +659,11 @@ const createRoomOrder = async (req, res) => {
       console.log(`🔔 Real-time notification sent for new order ${order.id}`);
     }
 
+    // Log order creation
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    const kitchen = await prisma.kitchen.findUnique({ where: { id: kitchenId } });
+    logger.order.create(order.room?.name || 'Unknown', tenant?.name || 'Unknown', kitchen?.kitchenNumber || 0, validatedItems.length, order.id.slice(0, 8), true);
+
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
@@ -616,6 +671,7 @@ const createRoomOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating room order:', error);
+    logger.order.create(req.room?.name || 'Unknown', 'Unknown', 0, 0, 'N/A', false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to create order',
@@ -634,16 +690,21 @@ const clearRoomOrderHistory = async (req, res) => {
 
     console.log(`🗑️ Clearing order history for room: ${roomId}`);
 
-    // Delete all DELIVERED orders for this room
+    // Delete all DELIVERED and CANCELLED orders for this room
     const result = await prisma.order.deleteMany({
       where: {
         roomId: roomId,
         tenantId: tenantId,
-        status: 'DELIVERED'
+        status: { in: ['DELIVERED', 'CANCELLED'] }
       }
     });
 
-    console.log(`✅ Deleted ${result.count} delivered orders`);
+    console.log(`✅ Deleted ${result.count} delivered/cancelled orders`);
+
+    // Log clear history
+    const room = await prisma.room.findUnique({ where: { id: roomId } });
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    logger.order.clearHistory(room?.name || 'Unknown', tenant?.name || 'Unknown', result.count);
 
     res.json({
       success: true,

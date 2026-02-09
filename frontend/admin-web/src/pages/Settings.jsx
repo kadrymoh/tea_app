@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  User, Mail, Phone, Lock, Save, Eye, EyeOff,
+  Lock, Save, Eye, EyeOff,
   AlertCircle, CheckCircle, Loader, Settings as SettingsIcon, Sun, Moon
 } from 'lucide-react';
 import { API_CONFIG } from '../config/api.config';
@@ -13,12 +13,6 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [activeSection, setActiveSection] = useState('preferences');
-
-  // Profile Form State
-  const [profileForm, setProfileForm] = useState({
-    name: '',
-    phone: ''
-  });
 
   // Password Form State
   const [passwordForm, setPasswordForm] = useState({
@@ -49,7 +43,7 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
     textSecondary: 'text-slate-400',
     border: 'border-slate-700',
     hover: 'hover:bg-slate-700',
-    button: 'bg-purple-600 hover:bg-purple-700',
+    button: 'bg-blue-600 hover:bg-blue-700',
     buttonSecondary: 'bg-slate-700 hover:bg-slate-600',
     surface: 'bg-slate-700/50'
   } : {
@@ -60,14 +54,13 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
     textSecondary: 'text-gray-600',
     border: 'border-gray-200',
     hover: 'hover:bg-gray-50',
-    button: 'bg-purple-600 hover:bg-purple-700',
+    button: 'bg-blue-600 hover:bg-blue-700',
     buttonSecondary: 'bg-gray-200 hover:bg-gray-300',
     surface: 'bg-gray-100'
   });
 
-  // Load user profile and organization settings
+  // Load organization settings
   useEffect(() => {
-    loadProfile();
     loadOrgSettings();
   }, []);
 
@@ -77,24 +70,6 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` })
     };
-  };
-
-  const loadProfile = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/users/profile`, {
-        headers: getAuthHeaders()
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        setProfileForm({
-          name: data.data.name || '',
-          phone: data.data.phone || ''
-        });
-      }
-    } catch (err) {
-      console.error('Failed to load profile:', err);
-    }
   };
 
   const loadOrgSettings = async () => {
@@ -113,33 +88,6 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
       }
     } catch (err) {
       console.error('Failed to load organization settings:', err);
-    }
-  };
-
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/users/profile`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(profileForm)
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setMessage({ type: 'success', text: 'Profile updated successfully!' });
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        setMessage({ type: 'error', text: data.message || 'Failed to update profile' });
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Network error. Please try again.' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -259,7 +207,7 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
           onClick={() => setActiveSection('preferences')}
           className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all ${
             activeSection === 'preferences'
-              ? 'bg-purple-600 text-white shadow-lg'
+              ? 'bg-blue-600 text-white shadow-lg'
               : `${theme.textSecondary} ${theme.hover}`
           }`}
         >
@@ -267,38 +215,27 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
           User Preferences
         </button>
         <button
-          onClick={() => setActiveSection('profile')}
-          className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all ${
-            activeSection === 'profile'
-              ? 'bg-purple-600 text-white shadow-lg'
-              : `${theme.textSecondary} ${theme.hover}`
-          }`}
-        >
-          <User className="w-5 h-5 inline mr-2" />
-          Profile
-        </button>
-        <button
           onClick={() => setActiveSection('password')}
           className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all ${
             activeSection === 'password'
-              ? 'bg-purple-600 text-white shadow-lg'
+              ? 'bg-blue-600 text-white shadow-lg'
               : `${theme.textSecondary} ${theme.hover}`
           }`}
         >
           <Lock className="w-5 h-5 inline mr-2" />
-          Change Password
+          Update Password
         </button>
         {user?.role === 'ADMIN' && (
           <button
             onClick={() => setActiveSection('organization')}
             className={`flex-1 py-3 px-4 rounded-lg font-bold transition-all ${
               activeSection === 'organization'
-                ? 'bg-purple-600 text-white shadow-lg'
+                ? 'bg-blue-600 text-white shadow-lg'
                 : `${theme.textSecondary} ${theme.hover}`
             }`}
           >
             <SettingsIcon className="w-5 h-5 inline mr-2" />
-            Organization
+            Organization Settings
           </button>
         )}
       </div>
@@ -341,81 +278,6 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
         </div>
       )}
 
-      {/* Profile Section */}
-      {activeSection === 'profile' && (
-        <div className={`${theme.card} border ${theme.border} rounded-2xl p-6`}>
-          <h3 className={`text-2xl font-bold ${theme.text} mb-6`}>Profile Information</h3>
-
-          <form onSubmit={handleUpdateProfile} className="space-y-6">
-            {/* Email (Read-only) */}
-            <div>
-              <label className={`block text-sm font-bold ${theme.text} mb-2`}>
-                <Mail className="w-4 h-4 inline mr-2" />
-                Email Address
-              </label>
-              <div className={`w-full px-4 py-3 rounded-xl border ${theme.border} ${theme.input} opacity-60 cursor-not-allowed`}>
-                {user?.email || 'Loading...'}
-              </div>
-              <p className={`text-xs ${theme.textSecondary} mt-1`}>
-                Email cannot be changed. Contact super admin if needed.
-              </p>
-            </div>
-
-            {/* Name */}
-            <div>
-              <label className={`block text-sm font-bold ${theme.text} mb-2`}>
-                <User className="w-4 h-4 inline mr-2" />
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={profileForm.name}
-                onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                className={`w-full px-4 py-3 rounded-xl border ${theme.border} ${theme.input} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all`}
-                placeholder="Enter your full name"
-                required
-              />
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label className={`block text-sm font-bold ${theme.text} mb-2`}>
-                <Phone className="w-4 h-4 inline mr-2" />
-                Phone Number (Optional)
-              </label>
-              <input
-                type="tel"
-                value={profileForm.phone}
-                onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                className={`w-full px-4 py-3 rounded-xl border ${theme.border} ${theme.input} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all`}
-                placeholder="+966 xxx xxx xxx"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-4 rounded-xl font-bold text-white transition-all shadow-lg ${
-                loading ? 'bg-gray-500 cursor-not-allowed' : theme.button
-              }`}
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <Loader className="w-5 h-5 mr-2 animate-spin" />
-                  Updating...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center">
-                  <Save className="w-5 h-5 mr-2" />
-                  Save Changes
-                </span>
-              )}
-            </button>
-          </form>
-        </div>
-      )}
-
       {/* Password Section */}
       {activeSection === 'password' && (
         <div className={`${theme.card} border ${theme.border} rounded-2xl p-6`}>
@@ -433,7 +295,7 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
                   type={showPasswords.current ? 'text' : 'password'}
                   value={passwordForm.currentPassword}
                   onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                  className={`w-full px-4 py-3 rounded-xl border ${theme.border} ${theme.input} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all pr-12`}
+                  className={`w-full px-4 py-3 rounded-xl border ${theme.border} ${theme.input} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12`}
                   placeholder="Enter current password"
                   required
                 />
@@ -458,7 +320,7 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
                   type={showPasswords.new ? 'text' : 'password'}
                   value={passwordForm.newPassword}
                   onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                  className={`w-full px-4 py-3 rounded-xl border ${theme.border} ${theme.input} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all pr-12`}
+                  className={`w-full px-4 py-3 rounded-xl border ${theme.border} ${theme.input} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12`}
                   placeholder="Enter new password (min 6 characters)"
                   required
                   minLength={6}
@@ -484,7 +346,7 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
                   type={showPasswords.confirm ? 'text' : 'password'}
                   value={passwordForm.confirmPassword}
                   onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                  className={`w-full px-4 py-3 rounded-xl border ${theme.border} ${theme.input} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all pr-12`}
+                  className={`w-full px-4 py-3 rounded-xl border ${theme.border} ${theme.input} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all pr-12`}
                   placeholder="Confirm new password"
                   required
                 />
@@ -569,7 +431,7 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
                       onChange={(e) => setOrgSettings({ ...orgSettings, enableOrderHistory: e.target.checked })}
                       className="sr-only peer"
                     />
-                    <div className="w-14 h-8 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-purple-600"></div>
+                    <div className="w-14 h-8 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
               </div>
@@ -592,7 +454,7 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
                       onChange={(e) => setOrgSettings({ ...orgSettings, autoClearHistoryEnabled: e.target.checked })}
                       className="sr-only peer"
                     />
-                    <div className="w-14 h-8 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-purple-600"></div>
+                    <div className="w-14 h-8 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
               </div>
@@ -610,7 +472,7 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
                       max="1440"
                       value={orgSettings.autoClearHistoryInterval}
                       onChange={(e) => setOrgSettings({ ...orgSettings, autoClearHistoryInterval: parseInt(e.target.value) || 60 })}
-                      className={`flex-1 px-4 py-3 rounded-xl border ${theme.input} focus:ring-2 focus:ring-purple-500 focus:border-transparent transition`}
+                      className={`flex-1 px-4 py-3 rounded-xl border ${theme.input} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
                       placeholder="60"
                     />
                     <span className={`${theme.textSecondary} text-sm whitespace-nowrap`}>
@@ -633,7 +495,7 @@ const Settings = ({ darkMode = false, toggleTheme, theme: parentTheme }) => {
               className={`w-full py-3 px-6 rounded-xl font-bold text-white transition-all ${
                 loading
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+                  : 'bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
               }`}
             >
               {loading ? (

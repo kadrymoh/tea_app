@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { prisma } = require('../lib/prisma');
 const { sendActivationEmail, sendWelcomeAdminEmail, sendPasswordResetEmail } = require('../services/email.service');
 const { generateTokenPair } = require('../utils/jwt.util');
+const logger = require('../utils/logger.js');
 
 // ============================================
 // CREATE SUPER ADMIN
@@ -120,7 +121,7 @@ const getAllSuperAdmins = async (req, res) => {
 const updateSuperAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, isActive } = req.body;
+    const { name, email, password, isActive } = req.body;
 
     // Check if super admin exists
     const existingAdmin = await prisma.superAdmin.findUnique({
@@ -153,6 +154,11 @@ const updateSuperAdmin = async (req, res) => {
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (isActive !== undefined) updateData.isActive = isActive;
+
+    // Handle password update
+    if (password && password.trim().length >= 6) {
+      updateData.passwordHash = await bcrypt.hash(password, 10);
+    }
 
     // Update super admin
     const updatedAdmin = await prisma.superAdmin.update({
@@ -508,7 +514,7 @@ const updateAdmin = async (req, res) => {
 };
 
 // ============================================
-// DELETE/DEACTIVATE ADMIN
+// DELETE ADMIN (PERMANENT DELETE)
 // ============================================
 
 const deleteAdmin = async (req, res) => {
@@ -527,15 +533,14 @@ const deleteAdmin = async (req, res) => {
       });
     }
 
-    // Soft delete by deactivating
-    await prisma.user.update({
-      where: { id },
-      data: { isActive: false }
+    // Permanent delete from database
+    await prisma.user.delete({
+      where: { id }
     });
 
     res.json({
       success: true,
-      message: 'Admin deactivated successfully'
+      message: 'Admin deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting admin:', error);
@@ -766,6 +771,9 @@ const loginSuperAdmin = async (req, res) => {
     // Remove sensitive data
     const { passwordHash, verificationToken, resetToken, ...adminData } = superAdmin;
 
+    // Log successful Super Admin login
+    logger.auth.superAdminLogin(email, true);
+
     res.json({
       success: true,
       data: {
@@ -782,6 +790,7 @@ const loginSuperAdmin = async (req, res) => {
     });
   } catch (error) {
     console.error('Super Admin login error:', error);
+    logger.auth.superAdminLogin(req.body?.email || 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       message: 'Login failed',

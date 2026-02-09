@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node check-teaboy-kitchen.js:*)"
+      "Bash(node check-teaboy-kitchen.js:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

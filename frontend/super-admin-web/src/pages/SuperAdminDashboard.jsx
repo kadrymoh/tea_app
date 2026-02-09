@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 
 // Import components (make sure to create these files)
-import CompanyDetailsModal from '../components/CompanyDetailsModal';
-import EditCompanyModal from '../components/EditCompanyModal';
+import CustomerDetailsModal from '../components/CustomerDetailsModal';
+import EditCustomerModal from '../components/EditCustomerModal';
 import AnalyticsTab from '../components/AnalyticsTab';
 import SettingsTab from '../components/SettingsTab';
 import { API_CONFIG } from '../config/api.config';
@@ -34,6 +34,8 @@ const SuperAdminDashboard = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [modalError, setModalError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
@@ -264,14 +266,15 @@ const SuperAdminDashboard = () => {
   const createTenant = async () => {
     try {
       setLoading(true);
+      setModalError(null);
       const res = await fetch(`${API_BASE_URL}/super-admin/tenants`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(tenantForm)
       });
-      
+
       const data = await res.json();
-      
+
       if (data.success) {
         await loadTenants();
         await loadStats();
@@ -284,12 +287,14 @@ const SuperAdminDashboard = () => {
           adminEmail: '',
           plan: 'basic'
         });
-        setError(null);
+        setModalError(null);
+        setSuccessMessage('Customer created successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        setError(data.message || 'Failed to create company');
+        setModalError(data.message || 'Failed to create customer');
       }
     } catch (err) {
-      setError('Failed to create company');
+      setModalError('Failed to create customer');
     } finally {
       setLoading(false);
     }
@@ -297,24 +302,27 @@ const SuperAdminDashboard = () => {
 
   const updateTenant = async (id, updateData) => {
     try {
+      setModalError(null);
       const res = await fetch(`${API_BASE_URL}/super-admin/tenants/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(updateData)
       });
-      
+
       const data = await res.json();
-      
+
       if (data.success) {
         await loadTenants();
         await loadStats();
         setEditModal(null);
-        setError(null);
+        setModalError(null);
+        setSuccessMessage('Customer updated successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        setError(data.message || 'Failed to update company');
+        setModalError(data.message || 'Failed to update customer');
       }
     } catch (err) {
-      setError('Failed to update company');
+      setModalError('Failed to update customer');
     }
   };
 
@@ -324,12 +332,14 @@ const SuperAdminDashboard = () => {
         method: 'PATCH',
         headers: getHeaders()
       });
-      
+
       const data = await res.json();
-      
+
       if (data.success) {
         await loadTenants();
         await loadStats();
+        setSuccessMessage('Customer status updated');
+        setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch (err) {
       setError('Failed to toggle status');
@@ -337,27 +347,28 @@ const SuperAdminDashboard = () => {
   };
 
   const deleteTenant = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this company? All data will be permanently deleted.')) {
+    if (!window.confirm('Are you sure you want to delete this customer? All data will be permanently deleted.')) {
       return;
     }
-    
+
     try {
       const res = await fetch(`${API_BASE_URL}/super-admin/tenants/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
-      
+
       const data = await res.json();
-      
+
       if (data.success) {
         await loadTenants();
         await loadStats();
-        setError(null);
+        setSuccessMessage('Customer deleted successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        setError(data.message || 'Failed to delete company');
+        setError(data.message || 'Failed to delete customer');
       }
     } catch (err) {
-      setError('Failed to delete company');
+      setError('Failed to delete customer');
     }
   };
 
@@ -380,11 +391,12 @@ const SuperAdminDashboard = () => {
 
   const createSuperAdmin = async () => {
     if (!superAdminForm.name || !superAdminForm.email || !superAdminForm.password) {
-      setError('Please fill all required fields');
+      setModalError('Please fill all required fields');
       return;
     }
 
     try {
+      setModalError(null);
       const res = await fetch(`${API_BASE_URL}/super-admin/super-admins`, {
         method: 'POST',
         headers: getHeaders(),
@@ -397,17 +409,20 @@ const SuperAdminDashboard = () => {
         await loadSuperAdmins();
         setSuperAdminModal(null);
         setSuperAdminForm({ name: '', email: '', password: '', phone: '' });
-        setError(null);
+        setModalError(null);
+        setSuccessMessage('Super Admin created successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        setError(data.message || 'Failed to create super admin');
+        setModalError(data.message || 'Failed to create super admin');
       }
     } catch (err) {
-      setError('Failed to create super admin');
+      setModalError('Failed to create super admin');
     }
   };
 
   const updateSuperAdmin = async () => {
     try {
+      setModalError(null);
       const updateData = { ...superAdminForm };
       if (!updateData.password) {
         delete updateData.password;
@@ -425,17 +440,19 @@ const SuperAdminDashboard = () => {
         await loadSuperAdmins();
         setSuperAdminModal(null);
         setSuperAdminForm({ name: '', email: '', password: '', phone: '' });
-        setError(null);
+        setModalError(null);
+        setSuccessMessage('Super Admin updated successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        setError(data.message || 'Failed to update super admin');
+        setModalError(data.message || 'Failed to update super admin');
       }
     } catch (err) {
-      setError('Failed to update super admin');
+      setModalError('Failed to update super admin');
     }
   };
 
   const deleteSuperAdmin = async (id) => {
-    if (!window.confirm('⚠️ Are you sure you want to PERMANENTLY DELETE this Super Admin?\n\nThis action cannot be undone and will remove the account from the database.')) {
+    if (!window.confirm('Are you sure you want to PERMANENTLY DELETE this Super Admin?\n\nThis action cannot be undone.')) {
       return;
     }
 
@@ -452,9 +469,8 @@ const SuperAdminDashboard = () => {
 
       if (data.success) {
         await loadSuperAdmins();
-        setError(null);
-        // Optional: Show success message
-        alert('✅ Super Admin deleted successfully');
+        setSuccessMessage('Super Admin deleted successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
         setError(data.message || 'Failed to delete super admin');
       }
@@ -482,11 +498,12 @@ const SuperAdminDashboard = () => {
 
   const createOrgAdmin = async () => {
     if (!orgAdminForm.name || !orgAdminForm.email || !orgAdminForm.tenantId) {
-      setError('Please fill all required fields');
+      setModalError('Please fill all required fields');
       return;
     }
 
     try {
+      setModalError(null);
       const requestData = {
         name: orgAdminForm.name,
         email: orgAdminForm.email,
@@ -507,17 +524,20 @@ const SuperAdminDashboard = () => {
         await loadOrgAdmins();
         setOrgAdminModal(null);
         setOrgAdminForm({ name: '', email: '', password: '', phone: '', tenantId: '' });
-        setError(null);
+        setModalError(null);
+        setSuccessMessage('Customer Admin created successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        setError(data.message || 'Failed to create admin');
+        setModalError(data.message || 'Failed to create admin');
       }
     } catch (err) {
-      setError('Failed to create admin');
+      setModalError('Failed to create admin');
     }
   };
 
   const updateOrgAdmin = async () => {
     try {
+      setModalError(null);
       const updateData = { ...orgAdminForm };
       if (!updateData.password) {
         delete updateData.password;
@@ -535,17 +555,19 @@ const SuperAdminDashboard = () => {
         await loadOrgAdmins();
         setOrgAdminModal(null);
         setOrgAdminForm({ name: '', email: '', password: '', phone: '', tenantId: '' });
-        setError(null);
+        setModalError(null);
+        setSuccessMessage('Customer Admin updated successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
-        setError(data.message || 'Failed to update admin');
+        setModalError(data.message || 'Failed to update admin');
       }
     } catch (err) {
-      setError('Failed to update admin');
+      setModalError('Failed to update admin');
     }
   };
 
   const deleteOrgAdmin = async (adminId) => {
-    if (!window.confirm('Are you sure you want to delete this admin?')) {
+    if (!window.confirm('Are you sure you want to PERMANENTLY DELETE this Customer Admin?\n\nThis action cannot be undone.')) {
       return;
     }
 
@@ -559,7 +581,8 @@ const SuperAdminDashboard = () => {
 
       if (data.success) {
         await loadOrgAdmins();
-        setError(null);
+        setSuccessMessage('Customer Admin deleted successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
         setError(data.message || 'Failed to delete admin');
       }
@@ -579,8 +602,8 @@ const SuperAdminDashboard = () => {
       const data = await res.json();
 
       if (data.success) {
-        alert('✅ Activation email sent successfully!');
-        setError(null);
+        setSuccessMessage('Activation email sent successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
       } else {
         setError(data.message || 'Failed to send activation email');
       }
@@ -677,9 +700,9 @@ const SuperAdminDashboard = () => {
         <nav className="p-4 overflow-y-auto h-[calc(100vh-220px)]">
           {[
             { id: 'overview', name: 'Overview', icon: LayoutDashboard },
-            { id: 'companies', name: 'Companies', icon: Building2 },
+            { id: 'companies', name: 'Customers', icon: Building2 },
+            { id: 'org-admins', name: 'Customers Admin', icon: UserCog },
             { id: 'super-admins', name: 'Super Admins', icon: Shield },
-            { id: 'org-admins', name: 'Org Admins', icon: UserCog },
             { id: 'billing', name: 'Billing', icon: DollarSign },
             { id: 'analytics', name: 'Analytics', icon: BarChart3 },
             { id: 'settings', name: 'Settings', icon: Settings }
@@ -751,28 +774,43 @@ const SuperAdminDashboard = () => {
               <div>
                 <h2 className={`text-3xl font-bold ${theme.text}`}>
                   {activeTab === 'overview' && 'Overview'}
-                  {activeTab === 'companies' && 'Companies'}
+                  {activeTab === 'companies' && 'Customers'}
+                  {activeTab === 'org-admins' && 'Customers Admin'}
+                  {activeTab === 'super-admins' && 'Super Admins'}
                   {activeTab === 'billing' && 'Billing & Revenue'}
                   {activeTab === 'analytics' && 'Analytics'}
                   {activeTab === 'settings' && 'Settings'}
                 </h2>
                 <p className={`text-sm ${theme.textSecondary} mt-1`}>
                   {activeTab === 'overview' && 'System overview and statistics'}
-                  {activeTab === 'companies' && 'Manage tenant companies'}
+                  {activeTab === 'companies' && 'Manage customer organizations'}
+                  {activeTab === 'org-admins' && 'Manage customer administrators'}
+                  {activeTab === 'super-admins' && 'Manage super admin accounts'}
                   {activeTab === 'billing' && 'Revenue and subscription management'}
                   {activeTab === 'analytics' && 'Detailed analytics and insights'}
                   {activeTab === 'settings' && 'System configuration'}
                 </p>
               </div>
-              {error && (
-                <div className="flex items-center space-x-2 px-4 py-2 bg-red-500/20 border border-red-500 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-400" />
-                  <span className="text-red-400 text-sm">{error}</span>
-                  <button onClick={() => setError(null)}>
-                    <XCircle className="w-4 h-4 text-red-400 hover:text-red-300" />
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                {successMessage && (
+                  <div className="flex items-center space-x-2 px-4 py-2 bg-green-500/20 border border-green-500 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <span className="text-green-400 text-sm">{successMessage}</span>
+                    <button onClick={() => setSuccessMessage(null)}>
+                      <XCircle className="w-4 h-4 text-green-400 hover:text-green-300" />
+                    </button>
+                  </div>
+                )}
+                {error && (
+                  <div className="flex items-center space-x-2 px-4 py-2 bg-red-500/20 border border-red-500 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                    <span className="text-red-400 text-sm">{error}</span>
+                    <button onClick={() => setError(null)}>
+                      <XCircle className="w-4 h-4 text-red-400 hover:text-red-300" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -789,7 +827,7 @@ const SuperAdminDashboard = () => {
                       <TrendingUp className="w-6 h-6" />
                     </div>
                     <h3 className="text-4xl font-bold mb-1">{stats.totalTenants}</h3>
-                    <p className="text-blue-100">Total Companies</p>
+                    <p className="text-blue-100">Total Customers</p>
                     <p className="text-xs text-blue-200 mt-2">{stats.activeTenants} active</p>
                   </div>
 
@@ -817,13 +855,13 @@ const SuperAdminDashboard = () => {
                     </div>
                     <h3 className="text-4xl font-bold mb-1">{stats.totalUsers}</h3>
                     <p className="text-orange-100">Total Users</p>
-                    <p className="text-xs text-orange-200 mt-2">All companies</p>
+                    <p className="text-xs text-orange-200 mt-2">All customers</p>
                   </div>
                 </div>
 
-                {/* Recent Companies */}
+                {/* Recent Customers */}
                 <div className={`${theme.card} border ${theme.border} rounded-2xl p-6`}>
-                  <h3 className={`text-xl font-bold ${theme.text} mb-6`}>Recent Companies</h3>
+                  <h3 className={`text-xl font-bold ${theme.text} mb-6`}>Recent Customers</h3>
                   <div className="space-y-3">
                     {tenants.slice(0, 5).map(tenant => (
                       <div key={tenant.id} className={`flex items-center justify-between p-4 ${theme.surface} rounded-xl border ${theme.border} ${theme.hover} transition-all`}>
@@ -872,7 +910,7 @@ const SuperAdminDashboard = () => {
                       <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme.textSecondary}`} />
                       <input
                         type="text"
-                        placeholder="Search companies..."
+                        placeholder="Search customers..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className={`w-full pl-10 pr-4 py-2.5 ${theme.input} border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none`}
@@ -893,7 +931,7 @@ const SuperAdminDashboard = () => {
                     className="ml-4 px-6 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-semibold flex items-center space-x-2 shadow-lg transition-all"
                   >
                     <Plus className="w-5 h-5" />
-                    <span>Add Company</span>
+                    <span>Add Customer</span>
                   </button>
                 </div>
 
@@ -902,7 +940,7 @@ const SuperAdminDashboard = () => {
                   <table className="w-full">
                     <thead className={`${theme.surface}`}>
                       <tr className={`border-b ${theme.border}`}>
-                        <th className={`text-left py-4 px-6 ${theme.text} font-semibold`}>Company</th>
+                        <th className={`text-left py-4 px-6 ${theme.text} font-semibold`}>Customer</th>
                         <th className={`text-left py-4 px-6 ${theme.text} font-semibold`}>Plan</th>
                         <th className={`text-left py-4 px-6 ${theme.text} font-semibold`}>Status</th>
                         <th className={`text-left py-4 px-6 ${theme.text} font-semibold`}>Orders</th>
@@ -983,7 +1021,7 @@ const SuperAdminDashboard = () => {
                   {filteredTenants.length === 0 && (
                     <div className="text-center py-12">
                       <Building2 className={`w-16 h-16 ${theme.textSecondary} mx-auto mb-4`} />
-                      <p className={`${theme.textSecondary} text-lg`}>No companies found</p>
+                      <p className={`${theme.textSecondary} text-lg`}>No customers found</p>
                     </div>
                   )}
                 </div>
@@ -1100,7 +1138,7 @@ const SuperAdminDashboard = () => {
                   <div className="flex items-center gap-4">
                     <p className={theme.textSecondary}>
                       {selectedTenant === 'all'
-                        ? `${orgAdmins.length} total organization admins`
+                        ? `${orgAdmins.length} total customer admins`
                         : `${orgAdmins.filter(a => a.tenantId === selectedTenant).length} admins`
                       }
                     </p>
@@ -1109,7 +1147,7 @@ const SuperAdminDashboard = () => {
                       onChange={(e) => setSelectedTenant(e.target.value)}
                       className={`px-4 py-2 ${theme.input} border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none`}
                     >
-                      <option value="all">All Organizations</option>
+                      <option value="all">All Customers</option>
                       {tenants.map(tenant => (
                         <option key={tenant.id} value={tenant.id}>
                           {tenant.name}
@@ -1125,7 +1163,7 @@ const SuperAdminDashboard = () => {
                     className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold flex items-center space-x-2 shadow-lg transition-all"
                   >
                     <Plus className="w-5 h-5" />
-                    <span>Add Org Admin</span>
+                    <span>Add Customer Admin</span>
                   </button>
                 </div>
 
@@ -1233,7 +1271,7 @@ const SuperAdminDashboard = () => {
                   {orgAdmins.filter(admin => selectedTenant === 'all' || admin.tenantId === selectedTenant).length === 0 && (
                     <div className="text-center py-16">
                       <UserCog className={`w-20 h-20 ${theme.textSecondary} mx-auto mb-4`} />
-                      <p className={`${theme.textSecondary} text-lg`}>No organization admins found</p>
+                      <p className={`${theme.textSecondary} text-lg`}>No customer admins found</p>
                     </div>
                   )}
                 </div>
@@ -1256,7 +1294,7 @@ const SuperAdminDashboard = () => {
                     <p className={`text-4xl font-bold ${theme.text}`}>
                       ${stats.totalRevenue?.toLocaleString()}
                     </p>
-                    <p className="text-sm text-blue-500 mt-2">All companies</p>
+                    <p className="text-sm text-blue-500 mt-2">All customers</p>
                   </div>
                   <div className={`${theme.card} border ${theme.border} rounded-2xl p-6`}>
                     <p className={`text-sm ${theme.textSecondary} mb-2`}>Active Subscriptions</p>
@@ -1456,15 +1494,15 @@ const SuperAdminDashboard = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6 overflow-y-auto">
           <div className={`${theme.card} rounded-2xl border ${theme.border} p-8 max-w-2xl w-full shadow-2xl my-8 max-h-[90vh] overflow-y-auto`}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className={`text-2xl font-bold ${theme.text}`}>Create New Company</h3>
-              <button onClick={() => setCreateModal(false)}>
+              <h3 className={`text-2xl font-bold ${theme.text}`}>Create New Customer</h3>
+              <button onClick={() => { setCreateModal(false); setModalError(null); }}>
                 <XCircle className={`w-6 h-6 ${theme.text}`} />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className={`${theme.text} font-medium mb-2 block text-sm`}>Company Name *</label>
+                <label className={`${theme.text} font-medium mb-2 block text-sm`}>Customer Name *</label>
                 <input
                   type="text"
                   value={tenantForm.name}
@@ -1533,11 +1571,18 @@ const SuperAdminDashboard = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Error message inside modal */}
+              {modalError && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <p className="text-red-500 text-sm">{modalError}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setCreateModal(false)}
+                onClick={() => { setCreateModal(false); setModalError(null); }}
                 className={`flex-1 py-3 ${theme.card} border ${theme.border} ${theme.text} rounded-lg font-medium ${theme.hover}`}
               >
                 Cancel
@@ -1547,7 +1592,7 @@ const SuperAdminDashboard = () => {
                 disabled={loading || !tenantForm.name || !tenantForm.adminEmail}
                 className="flex-1 py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-medium disabled:opacity-50"
               >
-                {loading ? 'Creating...' : 'Create Company'}
+                {loading ? 'Creating...' : 'Create Customer'}
               </button>
             </div>
           </div>
@@ -1556,7 +1601,7 @@ const SuperAdminDashboard = () => {
 
       {/* MODALS */}
       {detailsModal && (
-        <CompanyDetailsModal 
+        <CustomerDetailsModal 
           company={detailsModal}
           onClose={() => setDetailsModal(null)}
           theme={theme}
@@ -1565,7 +1610,7 @@ const SuperAdminDashboard = () => {
       )}
 
       {editModal && (
-        <EditCompanyModal
+        <EditCustomerModal
           company={editModal}
           onClose={() => setEditModal(null)}
           onSave={updateTenant}
@@ -1643,15 +1688,15 @@ const SuperAdminDashboard = () => {
                 </p>
               </div>
 
-              {error && (
+              {modalError && (
                 <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <p className="text-red-500 text-sm">{error}</p>
+                  <p className="text-red-500 text-sm">{modalError}</p>
                 </div>
               )}
 
               <div className="flex gap-3 pt-4">
                 <button
-                  onClick={() => setSuperAdminModal(null)}
+                  onClick={() => { setSuperAdminModal(null); setModalError(null); }}
                   className={`flex-1 py-3 ${theme.card} border ${theme.border} ${theme.text} rounded-xl font-bold hover:opacity-80 transition-all text-lg`}
                 >
                   Cancel
@@ -1680,9 +1725,9 @@ const SuperAdminDashboard = () => {
           <div className={`${theme.card} rounded-3xl border-2 border-purple-500/50 p-8 max-w-2xl w-full shadow-2xl`}>
             <div className="flex items-center justify-between mb-6">
               <h3 className={`text-3xl font-bold ${theme.text}`}>
-                {orgAdminModal.isNew ? 'Add Organization Admin' : 'Edit Organization Admin'}
+                {orgAdminModal.isNew ? 'Add Customer Admin' : 'Edit Customer Admin'}
               </h3>
-              <button onClick={() => setOrgAdminModal(null)} className={`p-2 ${theme.hover} rounded-lg transition-all`}>
+              <button onClick={() => { setOrgAdminModal(null); setModalError(null); }} className={`p-2 ${theme.hover} rounded-lg transition-all`}>
                 <X className={`w-8 h-8 ${theme.text}`} />
               </button>
             </div>
@@ -1771,10 +1816,17 @@ const SuperAdminDashboard = () => {
                 </div>
               )}
 
+              {/* Error message inside modal */}
+              {modalError && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <p className="text-red-500 text-sm">{modalError}</p>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex space-x-4 pt-4">
                 <button
-                  onClick={() => setOrgAdminModal(null)}
+                  onClick={() => { setOrgAdminModal(null); setModalError(null); }}
                   className={`flex-1 py-3 border ${theme.border} ${theme.text} rounded-xl font-bold ${theme.hover} transition-all text-lg`}
                 >
                   <X className="inline mr-2 w-5 h-5" />

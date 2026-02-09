@@ -1,5 +1,6 @@
 // backend/src/controllers/kitchen.controller.js
 const { prisma } = require('../lib/prisma');
+const logger = require('../utils/logger.js');
 
 // ============================================
 // GET ALL KITCHENS
@@ -102,6 +103,11 @@ const createKitchen = async (req, res) => {
       }
     });
 
+    // Log kitchen creation
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.kitchen.create(adminEmail, tenantName, name, kitchenNumber, true);
+
     res.status(201).json({
       success: true,
       message: 'Kitchen created successfully',
@@ -109,6 +115,9 @@ const createKitchen = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating kitchen:', error);
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.kitchen.create(adminEmail, tenantName, req.body?.name || 'Unknown', 0, false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to create kitchen',
@@ -151,6 +160,11 @@ const updateKitchen = async (req, res) => {
       data: updateData
     });
 
+    // Log kitchen update
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.kitchen.update(adminEmail, tenantName, existingKitchen.name, updateData, true);
+
     res.json({
       success: true,
       message: 'Kitchen updated successfully',
@@ -158,6 +172,9 @@ const updateKitchen = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating kitchen:', error);
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.kitchen.update(adminEmail, tenantName, req.params?.id || 'Unknown', {}, false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to update kitchen',
@@ -174,14 +191,15 @@ const deleteKitchen = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if kitchen exists
+    // Check if kitchen exists with all related counts
     const existingKitchen = await req.tenantPrisma.kitchen.findUnique({
       where: { id },
       include: {
         _count: {
           select: {
             users: true,
-            rooms: true
+            rooms: true,
+            orders: true
           }
         }
       }
@@ -194,18 +212,34 @@ const deleteKitchen = async (req, res) => {
       });
     }
 
-    // Check if kitchen has associated users or rooms
-    if (existingKitchen._count.users > 0 || existingKitchen._count.rooms > 0) {
+    // Build detailed error message if kitchen has dependencies
+    const dependencies = [];
+    if (existingKitchen._count.users > 0) {
+      dependencies.push(`${existingKitchen._count.users} user(s)`);
+    }
+    if (existingKitchen._count.rooms > 0) {
+      dependencies.push(`${existingKitchen._count.rooms} room(s)`);
+    }
+    if (existingKitchen._count.orders > 0) {
+      dependencies.push(`${existingKitchen._count.orders} order(s)`);
+    }
+
+    if (dependencies.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot delete kitchen with associated users or rooms'
+        message: `Cannot delete kitchen with associated ${dependencies.join(', ')}. Please reassign or remove them first.`
       });
     }
 
-    // Delete kitchen
+    // Delete kitchen (menu items will cascade delete automatically)
     await req.tenantPrisma.kitchen.delete({
       where: { id }
     });
+
+    // Log kitchen deletion
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.kitchen.delete(adminEmail, tenantName, existingKitchen.name, true);
 
     res.json({
       success: true,
@@ -213,6 +247,9 @@ const deleteKitchen = async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting kitchen:', error);
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.kitchen.delete(adminEmail, tenantName, req.params?.id || 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to delete kitchen',

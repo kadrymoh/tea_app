@@ -2,6 +2,7 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { sendNewUserEmail } = require('../services/email.service');
+const logger = require('../utils/logger.js');
 
 // ============================================
 // GET CURRENT USER PROFILE
@@ -311,6 +312,11 @@ const createUser = async (req, res) => {
     // Remove verification token from response
     const { verificationToken: _, ...userData } = user;
 
+    // Log user creation
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.user.create(adminEmail, tenantName, email, role, true);
+
     res.status(201).json({
       success: true,
       message: 'User created successfully. Activation email sent.',
@@ -318,6 +324,9 @@ const createUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating user:', error);
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.user.create(adminEmail, tenantName, req.body?.email || 'Unknown', req.body?.role || 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to create user',
@@ -337,7 +346,15 @@ const updateUser = async (req, res) => {
 
     // Check if user exists
     const existingUser = await req.tenantPrisma.user.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        kitchen: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
     });
 
     if (!existingUser) {
@@ -347,8 +364,19 @@ const updateUser = async (req, res) => {
       });
     }
 
+    // Check if trying to change role between ADMIN and TEA_BOY
+    if (role && role !== existingUser.role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot change user role between Admin and Tea Boy. Please create a new user instead.'
+      });
+    }
+
+    // Track if email is being changed
+    const emailChanged = email && email !== existingUser.email;
+
     // Check if email is taken by another user
-    if (email && email !== existingUser.email) {
+    if (emailChanged) {
       const emailTaken = await req.tenantPrisma.user.findFirst({
         where: {
           email,
@@ -369,9 +397,18 @@ const updateUser = async (req, res) => {
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (phone !== undefined) updateData.phone = phone || null;
-    if (role) updateData.role = role;
+    // Role change is not allowed, so we don't update it
     if (kitchenId !== undefined) updateData.kitchenId = kitchenId || null;
     if (isActive !== undefined) updateData.isActive = isActive;
+
+    // If email changed, generate new verification token and reset verification status
+    let newVerificationToken = null;
+    if (emailChanged) {
+      newVerificationToken = crypto.randomBytes(32).toString('hex');
+      updateData.emailVerified = false;
+      updateData.emailVerifiedAt = null;
+      updateData.verificationToken = newVerificationToken;
+    }
 
     // Update user
     const updatedUser = await req.tenantPrisma.user.update({
@@ -386,6 +423,7 @@ const updateUser = async (req, res) => {
         isActive: true,
         emailVerified: true,
         updatedAt: true,
+        verificationToken: true,
         kitchen: {
           select: {
             id: true,
@@ -395,13 +433,42 @@ const updateUser = async (req, res) => {
       }
     });
 
+    // If email changed, send new activation email
+    if (emailChanged && newVerificationToken) {
+      console.log('📧 Sending new activation email to changed email:', email);
+      const emailResult = await sendNewUserEmail(
+        {
+          name: updatedUser.name,
+          email: updatedUser.email,
+          verificationToken: newVerificationToken
+        },
+        updatedUser.role,
+        updatedUser.kitchen?.name || null,
+        null // No password in update
+      );
+      console.log('📧 Email send result:', emailResult);
+    }
+
+    // Remove verification token from response
+    const { verificationToken: _, ...userData } = updatedUser;
+
+    // Log user update
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.user.update(adminEmail, tenantName, existingUser.email, updateData, true);
+
     res.json({
       success: true,
-      message: 'User updated successfully',
-      data: updatedUser
+      message: emailChanged
+        ? 'User updated successfully. A new activation email has been sent to the new email address.'
+        : 'User updated successfully',
+      data: userData
     });
   } catch (error) {
     console.error('Error updating user:', error);
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.user.update(adminEmail, tenantName, req.params?.id || 'Unknown', {}, false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to update user',
@@ -443,12 +510,20 @@ const deleteUser = async (req, res) => {
       where: { id }
     });
 
+    // Log user deletion
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.user.delete(adminEmail, tenantName, existingUser.email, true);
+
     res.json({
       success: true,
       message: 'User deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting user:', error);
+    const adminEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+    logger.user.delete(adminEmail, tenantName, req.params?.id || 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       message: 'Failed to delete user',

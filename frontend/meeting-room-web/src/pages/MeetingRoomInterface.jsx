@@ -9,9 +9,10 @@ import {
   ClockIcon,
   CheckCircleIcon,
   SettingsIcon,
-  ChevronDownIcon,
   PackageIcon,
-  AlertCircleIcon
+  AlertCircleIcon,
+  ShoppingCartIcon,
+  TrashIcon
 } from '../components/Icons';
 
 const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
@@ -31,7 +32,8 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
   const [tempCustomization, setTempCustomization] = useState({
     quantity: 1,
     sugar: 2,
@@ -67,9 +69,9 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
       sugar: 'Sugar Level',
       ice: 'Ice Level',
       iceNone: 'No Ice',
-      iceLow: 'Light Ice',
-      iceMedium: 'Medium Ice',
-      iceHigh: 'Extra Ice',
+      iceLow: 'Light',
+      iceMedium: 'Medium',
+      iceHigh: 'Extra',
       none: 'None',
       low: 'Low',
       medium: 'Medium',
@@ -119,10 +121,10 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
       quantity: 'الكمية',
       sugar: 'مستوى السكر',
       ice: 'مستوى الثلج',
-      iceNone: 'بدون ثلج',
-      iceLow: 'ثلج خفيف',
-      iceMedium: 'ثلج متوسط',
-      iceHigh: 'ثلج إضافي',
+      iceNone: 'بدون',
+      iceLow: 'خفيف',
+      iceMedium: 'متوسط',
+      iceHigh: 'إضافي',
       none: 'بدون',
       low: 'قليل',
       medium: 'متوسط',
@@ -352,6 +354,18 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
       loadOrders(); // Reload orders when update received
     });
 
+    // Listen for menu updates (real-time sync)
+    socket.on('menu-update', (data) => {
+      console.log('🍽️ Received menu update:', data);
+      loadMenu(); // Reload menu when update received
+    });
+
+    // Listen for menu item availability changes
+    socket.on('menu-item-update', (item) => {
+      console.log('🍽️ Received menu item update:', item);
+      loadMenu(); // Reload menu when item availability changes
+    });
+
     // Cleanup on unmount
     return () => {
       socket.disconnect();
@@ -440,6 +454,30 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
     return t[labels[level]] || t.iceMedium;
   };
 
+  // Format date as dd/mm/yy
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Format time as HH:MM
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString(language === 'ar' ? 'ar-SA' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Format full date and time
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    return `${formatDate(dateString)} ${formatTime(dateString)}`;
+  };
+
   // ============================================
   // RENDER
   // ============================================
@@ -497,6 +535,19 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Cart Icon Button */}
+          {cartCount > 0 && (
+            <button
+              onClick={() => setShowCart(!showCart)}
+              className={`relative flex items-center justify-center w-12 h-12 rounded-full bg-sky-500 hover:bg-sky-600 text-white transition-colors`}
+            >
+              <ShoppingCartIcon className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                {cartCount}
+              </span>
+            </button>
+          )}
+
           {orderHistory.length > 0 && (
             <button
               onClick={() => setShowOrderStatus(!showOrderStatus)}
@@ -535,6 +586,105 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
         </div>
       )}
 
+      {/* Cart Modal */}
+      {showCart && cartCount > 0 && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`${theme.surfaceBg} rounded-2xl ${theme.border} border p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto ${theme.shadowLg} animate-in fade-in slide-in-from-bottom-4`}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <ShoppingCartIcon className={`w-6 h-6 ${theme.primaryText}`} />
+                <h3 className={`text-2xl font-bold ${theme.textMain}`}>
+                  {language === 'ar' ? 'سلة الطلبات' : 'Your Cart'}
+                </h3>
+                <span className={`px-3 py-1 rounded-full ${theme.primaryBg} ${theme.primaryText} text-sm font-bold`}>
+                  {cartCount} {language === 'ar' ? 'عنصر' : 'items'}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowCart(false)}
+                className={`w-10 h-10 flex items-center justify-center rounded-full ${theme.buttonBg} ${theme.buttonHover} ${theme.textMain} text-2xl font-bold transition-colors`}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Cart Items */}
+            <div className="space-y-3 mb-6">
+              {Object.values(cart).map(item => (
+                <div
+                  key={item.cartKey}
+                  className={`${theme.surfaceHighlight} rounded-xl p-4 ${theme.border} border`}
+                >
+                  <div className="flex items-start gap-4">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={typeof item.name === 'object' ? item.name[language] : item.name}
+                        className="w-16 h-16 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className={`w-16 h-16 rounded-xl ${theme.surfaceBg} flex items-center justify-center`}>
+                        <span className="text-4xl">{item.icon}</span>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className={`${theme.textMain} font-bold text-lg`}>
+                            {typeof item.name === 'object' ? item.name[language] : item.name}
+                          </h4>
+                          <p className={`${theme.textSecondary} text-sm mt-1`}>
+                            {language === 'ar' ? 'الكمية:' : 'Qty:'} {item.quantity}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => removeFromCart(item.cartKey)}
+                          className="w-8 h-8 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Item details */}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {item.sugar !== null && (
+                          <span className={`px-2 py-1 rounded-lg ${theme.surfaceBg} text-xs ${theme.textSecondary}`}>
+                            {language === 'ar' ? 'السكر:' : 'Sugar:'} {getSugarText(item.sugar)}
+                          </span>
+                        )}
+                        {item.ice !== null && (
+                          <span className={`px-2 py-1 rounded-lg ${theme.surfaceBg} text-xs text-cyan-500`}>
+                            ❄️ {getIceText(item.ice)}
+                          </span>
+                        )}
+                      </div>
+                      {item.notes && (
+                        <p className={`${theme.textSecondary} text-xs mt-2 italic`}>
+                          {language === 'ar' ? 'ملاحظات:' : 'Notes:'} {item.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Send Order Button */}
+            <button
+              onClick={() => {
+                sendOrder();
+                setShowCart(false);
+              }}
+              disabled={loading}
+              className={`w-full py-4 ${theme.primary} ${theme.primaryHover} text-white text-lg font-bold rounded-xl flex items-center justify-center gap-3 transition-colors ${theme.shadowLg} ${theme.primaryShadow} disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              <span>{loading ? t.loading : t.sendOrder}</span>
+              <SendIcon className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Order Status Modal Overlay */}
       {showOrderStatus && orderHistory.length > 0 && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -543,29 +693,8 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
               <h3 className={`text-2xl font-bold ${theme.textMain}`}>{t.orderStatus}</h3>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={async () => {
-                    if (window.confirm(language === 'ar' ? 'هل أنت متأكد من حذف جميع الطلبات المكتملة؟' : 'Are you sure you want to clear all delivered orders?')) {
-                      try {
-                        const res = await fetch(`${API_BASE_URL}/room/orders/history`, {
-                          method: 'DELETE',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${roomToken}`
-                          }
-                        });
-                        const data = await res.json();
-                        if (data.success) {
-                          // Reload orders
-                          loadOrders();
-                          alert(language === 'ar' ? `تم حذف ${data.deletedCount} طلب` : `Cleared ${data.deletedCount} order(s)`);
-                        }
-                      } catch (err) {
-                        console.error('Failed to clear history:', err);
-                        alert(language === 'ar' ? 'فشل حذف السجل' : 'Failed to clear history');
-                      }
-                    }
-                  }}
-                  className={`px-4 py-2 rounded-lg ${theme.buttonBg} ${theme.buttonHover} ${theme.textMain} text-sm font-medium transition-colors`}
+                  onClick={() => setShowClearConfirm(true)}
+                  className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors"
                 >
                   {language === 'ar' ? 'مسح السجل' : 'Clear History'}
                 </button>
@@ -603,10 +732,20 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
                         {getStatusText(order.status)}
                       </p>
                       <p className={`${theme.textSecondary} text-sm`}>
-                        {new Date(order.timestamp || order.createdAt).toLocaleString(
-                          language === 'ar' ? 'ar-SA' : 'en-US'
-                        )}
+                        {formatDate(order.timestamp || order.createdAt)} {formatTime(order.timestamp || order.createdAt)}
                       </p>
+                      {/* Show prepared time if status is PREPARING or beyond */}
+                      {order.preparedAt && (
+                        <p className={`text-blue-500 text-xs mt-1`}>
+                          {language === 'ar' ? 'وقت التحضير:' : 'Prepared:'} {formatTime(order.preparedAt)}
+                        </p>
+                      )}
+                      {/* Show delivered time if status is DELIVERED */}
+                      {order.deliveredAt && (
+                        <p className={`text-green-500 text-xs mt-1`}>
+                          {language === 'ar' ? 'وقت التسليم:' : 'Delivered:'} {formatTime(order.deliveredAt)}
+                        </p>
+                      )}
                       {order.items && order.items.length > 0 && (
                         <p className={`${theme.textSecondary} text-xs mt-1`}>
                           {order.items.length} {language === 'ar' ? 'عنصر' : 'item(s)'}
@@ -669,11 +808,50 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
                   }`} />
                 </div>
               </div>
-              <p className={`${theme.textSecondary} text-sm mt-2`}>
-                {new Date(selectedOrder.timestamp || selectedOrder.createdAt).toLocaleString(
-                  language === 'ar' ? 'ar-SA' : 'en-US'
+
+              {/* Timestamps Section */}
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className={`${theme.textSecondary} text-sm`}>
+                    {language === 'ar' ? 'وقت الطلب:' : 'Order Time:'}
+                  </span>
+                  <span className={`${theme.textMain} text-sm font-medium`}>
+                    {formatDateTime(selectedOrder.timestamp || selectedOrder.createdAt)}
+                  </span>
+                </div>
+                {selectedOrder.preparedAt && (
+                  <div className="flex items-center justify-between">
+                    <span className={`text-blue-500 text-sm`}>
+                      {language === 'ar' ? 'وقت التحضير:' : 'Prepared Time:'}
+                    </span>
+                    <span className={`text-blue-600 text-sm font-medium`}>
+                      {formatDateTime(selectedOrder.preparedAt)}
+                    </span>
+                  </div>
                 )}
-              </p>
+                {selectedOrder.deliveredAt && (
+                  <div className="flex items-center justify-between">
+                    <span className={`text-green-500 text-sm`}>
+                      {language === 'ar' ? 'وقت التسليم:' : 'Delivered Time:'}
+                    </span>
+                    <span className={`text-green-600 text-sm font-medium`}>
+                      {formatDateTime(selectedOrder.deliveredAt)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Cancel Reason Section */}
+              {selectedOrder.status === 'CANCELLED' && selectedOrder.cancelReason && (
+                <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-red-600 text-sm font-semibold mb-1">
+                    {language === 'ar' ? 'سبب الإلغاء:' : 'Cancel Reason:'}
+                  </p>
+                  <p className="text-red-700 text-sm">
+                    {selectedOrder.cancelReason}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Order Items */}
@@ -854,10 +1032,10 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
 
                   {/* Ice Level */}
                   {selectedItem.hasIce && (
-                    <div className={`${theme.surfaceHighlight} p-4 rounded-xl`}>
-                      <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex justify-between">
                         <span className={`${theme.textMain} font-medium`}>{t.ice}</span>
-                        <span className={`text-sm ${theme.primaryText} font-semibold`}>
+                        <span className={`${theme.primaryText} text-sm font-medium`}>
                           {getIceText(tempCustomization.ice)}
                         </span>
                       </div>
@@ -977,22 +1155,18 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
             {Object.keys(cart).length === 0 ? (
               <span className={theme.textSecondary}>{t.noItems}</span>
             ) : (
-              <button
-                onClick={() => setShowCart(!showCart)}
-                className={`flex items-center gap-3 ${theme.textMain} hover:${theme.textSecondary} transition-all`}
-              >
+              <div className={`flex items-center gap-3 ${theme.textMain}`}>
                 <PackageIcon className="w-5 h-5" />
                 <div className="flex flex-col">
                   <span className="font-bold">{t.totalItems}: {cartCount} {t.items}</span>
                   <span className={`${theme.textSecondary} text-sm`}>
-                    {Object.values(cart)[0] && (typeof Object.values(cart)[0].name === 'object' 
-                      ? Object.values(cart)[0].name[language] 
+                    {Object.values(cart)[0] && (typeof Object.values(cart)[0].name === 'object'
+                      ? Object.values(cart)[0].name[language]
                       : Object.values(cart)[0].name)}
                     {Object.keys(cart).length > 1 && ` +${Object.keys(cart).length - 1}`}
                   </span>
                 </div>
-                <ChevronDownIcon className={`w-5 h-5 transition-transform ${showCart ? 'rotate-180' : ''}`} />
-              </button>
+              </div>
             )}
           </div>
 
@@ -1008,61 +1182,49 @@ const MeetingRoomInterface = ({ roomToken, roomInfo }) => {
           )}
         </div>
 
-        {/* Expanded Cart */}
-        {showCart && Object.keys(cart).length > 0 && (
-          <div className={`mt-4 pt-4 border-t ${theme.border} max-w-5xl mx-auto`}>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
-              {Object.values(cart).map(item => (
-                <div
-                  key={item.cartKey}
-                  className={`relative ${theme.surfaceHighlight} rounded-xl p-4 ${theme.border} border`}
+      </footer>
+
+      {/* Clear History Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className={`${theme.surfaceBg} rounded-2xl ${theme.border} border p-6 max-w-md w-full ${theme.shadowLg} animate-in fade-in slide-in-from-bottom-4`}>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <TrashIcon className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className={`text-xl font-bold ${theme.textMain} mb-2`}>
+                {language === 'ar' ? 'مسح السجل' : 'Clear History'}
+              </h3>
+              <p className={`${theme.textSecondary} mb-6`}>
+                {language === 'ar'
+                  ? 'هل أنت متأكد من إخفاء جميع الطلبات المكتملة والملغية من هذه الشاشة؟'
+                  : 'Are you sure you want to hide all delivered and cancelled orders from this screen?'}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className={`flex-1 px-4 py-3 rounded-xl ${theme.buttonBg} ${theme.buttonHover} ${theme.textMain} font-medium transition-colors`}
                 >
-                  <button
-                    onClick={() => removeFromCart(item.cartKey)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center font-bold transition-all shadow-sm"
-                  >
-                    ×
-                  </button>
-                  
-                  <div className="flex items-start gap-3">
-                    {item.imageUrl ? (
-                      <img 
-                        src={item.imageUrl} 
-                        alt={typeof item.name === 'object' ? item.name[language] : item.name}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <span className="text-3xl">{item.icon}</span>
-                    )}
-                    <div className="flex-1">
-                      <h4 className={`${theme.textMain} font-bold text-sm`}>
-                        {typeof item.name === 'object' ? item.name[language] : item.name}
-                      </h4>
-                      <p className={`${theme.textSecondary} text-xs`}>
-                        {t.quantity}: {item.quantity}
-                        {item.price > 0 && ` • $${(item.price * item.quantity).toFixed(2)}`}
-                      </p>
-                      {item.sugar !== null && item.sugar !== 2 && (
-                        <p className={`${theme.primaryText} text-xs`}>
-                          {t.sugar}: {getSugarText(item.sugar)}
-                        </p>
-                      )}
-                      {item.ice !== null && item.ice !== 1 && (
-                        <p className="text-cyan-500 text-xs">❄️ {t.ice}: {getIceText(item.ice)}</p>
-                      )}
-                      {item.notes && (
-                        <p className={`${theme.textSecondary} text-xs line-clamp-1`}>
-                          {t.note}: {item.notes}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  onClick={() => {
+                    // Clear history locally only (don't delete from database)
+                    // Filter out delivered and cancelled orders from the UI
+                    setOrders(prev => prev.filter(order =>
+                      order.status !== 'delivered' && order.status !== 'cancelled'
+                    ));
+                    setShowClearConfirm(false);
+                  }}
+                  className="flex-1 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-colors"
+                >
+                  {language === 'ar' ? 'نعم، إخفاء' : 'Yes, Hide'}
+                </button>
+              </div>
             </div>
           </div>
-        )}
-      </footer>
+        </div>
+      )}
     </div>
   );
 };

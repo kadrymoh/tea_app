@@ -2,6 +2,7 @@
 const { prisma } = require('../lib/prisma.js');
 const { hashPassword, validatePasswordStrength } = require('../utils/password.util.js');
 const { generateTokenPair } = require('../utils/jwt.util.js');
+const logger = require('../utils/logger.js');
 
 /**
  * Register new tenant (company signup)
@@ -152,6 +153,9 @@ const registerTenant = async (req, res) => {
     // Return success
     const { passwordHash, ...adminWithoutPassword } = result.adminUser;
 
+    // Log tenant creation
+    logger.tenant.create('Self-Registration', companyName, adminEmail, true);
+
     res.status(201).json({
       success: true,
       message: 'Tenant registered successfully',
@@ -168,6 +172,7 @@ const registerTenant = async (req, res) => {
     });
   } catch (error) {
     console.error('Tenant registration error:', error);
+    logger.tenant.create('Self-Registration', req.body?.companyName || 'Unknown', req.body?.adminEmail || 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       error: 'Registration failed',

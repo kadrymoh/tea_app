@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "706245000575",
+    "project_id": "tea-management-system-4b347",
+    "storage_bucket": "tea-management-system-4b347.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:706245000575:android:c4b7b8f0a3a2e0a72b6e4a",
+        "android_client_info": {
+          "package_name": "com.twaasol.teaboy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADR0Ke2jqLTibDTDnXegctQJutoZ00F2Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

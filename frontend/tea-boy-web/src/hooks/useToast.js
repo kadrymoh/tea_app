@@ -23,11 +23,11 @@ export const useToast = () => {
     return addToast(message, 'success', title, duration);
   }, [addToast]);
 
-  const error = useCallback((message, title = 'Error', duration = 5000) => {
+  const error = useCallback((message, title = 'Error', duration = 3000) => {
     return addToast(message, 'error', title, duration);
   }, [addToast]);
 
-  const warning = useCallback((message, title = 'Warning', duration = 4000) => {
+  const warning = useCallback((message, title = 'Warning', duration = 3000) => {
     return addToast(message, 'warning', title, duration);
   }, [addToast]);
 

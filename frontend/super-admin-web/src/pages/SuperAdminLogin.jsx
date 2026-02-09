@@ -65,26 +65,26 @@ const SuperAdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-6">
-      <div className="bg-slate-800/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md border-2 border-slate-700/50">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md border border-gray-200">
         {/* Logo & Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center p-4 bg-gradient-to-br from-sky-500 to-blue-600 rounded-2xl mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center p-4 bg-blue-500 rounded-2xl mb-4 shadow-lg">
             <Shield className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2 bg-gradient-to-r from-sky-400 to-blue-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
             Super Admin
           </h1>
-          <p className="text-slate-400 text-lg">
+          <p className="text-gray-500 text-lg">
             Control Panel
           </p>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="bg-red-500/10 border-2 border-red-500/50 rounded-xl p-4 mb-6 flex items-start space-x-3 animate-shake">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <p className="text-red-400 text-sm font-medium">{error}</p>
+          <div className="bg-red-50 border border-red-400 rounded-xl p-4 mb-6 flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-red-600 text-sm font-medium">{error}</p>
           </div>
         )}
 
@@ -92,17 +92,17 @@ const SuperAdminLogin = () => {
         <form onSubmit={handleLogin} className="space-y-5">
           {/* Email Field */}
           <div>
-            <label className="text-white font-semibold mb-2 block text-sm">
+            <label className="text-gray-700 font-semibold mb-2 block text-sm">
               Email Address
             </label>
             <div className="relative group">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-sky-400 transition-colors" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="superadmin@tea.com"
-                className="w-full pl-10 pr-4 py-3.5 bg-slate-700/50 border-2 border-slate-600 text-white rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all placeholder:text-slate-500"
+                className="w-full pl-10 pr-4 py-3.5 bg-gray-50 border border-gray-300 text-gray-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
                 required
               />
             </div>
@@ -110,23 +110,23 @@ const SuperAdminLogin = () => {
 
           {/* Password Field */}
           <div>
-            <label className="text-white font-semibold mb-2 block text-sm">
+            <label className="text-gray-700 font-semibold mb-2 block text-sm">
               Password
             </label>
             <div className="relative group">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-sky-400 transition-colors" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full pl-10 pr-12 py-3.5 bg-slate-700/50 border-2 border-slate-600 text-white rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-all placeholder:text-slate-500"
+                className="w-full pl-10 pr-12 py-3.5 bg-gray-50 border border-gray-300 text-gray-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-gray-400"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 {showPassword ? (
                   <EyeOff className="w-5 h-5" />
@@ -141,7 +141,7 @@ const SuperAdminLogin = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white rounded-xl font-bold text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full py-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
             {loading ? (
               <div className="flex items-center justify-center space-x-2">
@@ -155,18 +155,18 @@ const SuperAdminLogin = () => {
         </form>
 
         {/* Login Info */}
-        <div className="mt-6 p-5 bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-2 border-blue-500/20 rounded-xl">
+        <div className="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-xl">
           <div className="flex items-center justify-center mb-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Shield className="w-5 h-5 text-blue-400" />
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Shield className="w-5 h-5 text-blue-500" />
             </div>
-            <p className="text-blue-300 text-sm font-bold ml-2">
+            <p className="text-blue-600 text-sm font-bold ml-2">
               Login Information
             </p>
           </div>
-          <div className="text-center text-sm text-slate-400">
+          <div className="text-center text-sm text-gray-500">
             <p>Use your Super Admin credentials</p>
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-gray-400">
               Email verification required for new accounts
             </p>
           </div>
@@ -174,22 +174,11 @@ const SuperAdminLogin = () => {
 
         {/* Footer */}
         <div className="mt-6 text-center">
-          <p className="text-slate-500 text-xs">
-            🫖 Tea Management System v2.0.0
+          <p className="text-gray-400 text-xs">
+            Tea Management System v2.0.0
           </p>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-10px); }
-          75% { transform: translateX(10px); }
-        }
-        .animate-shake {
-          animation: shake 0.5s ease-in-out;
-        }
-      `}</style>
     </div>
   );
 };

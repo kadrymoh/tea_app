@@ -1,5 +1,6 @@
 // backend/src/controllers/order.controller.js
 const { prisma } = require('../lib/prisma');
+const logger = require('../utils/logger.js');
 
 // ============================================
 // GET ALL ORDERS
@@ -284,6 +285,14 @@ const updateOrderStatus = async (req, res) => {
       updateData.cancelReason = cancelReason;
     }
 
+    // Set timestamps based on status
+    if (status === 'PREPARING' && !existingOrder.preparedAt) {
+      updateData.preparedAt = new Date();
+    }
+    if (status === 'DELIVERED' && !existingOrder.deliveredAt) {
+      updateData.deliveredAt = new Date();
+    }
+
     // Update order
     const updatedOrder = await req.tenantPrisma.order.update({
       where: { id },
@@ -308,6 +317,16 @@ const updateOrderStatus = async (req, res) => {
       req.app.locals.io.to(`kitchen-${updatedOrder.kitchenId}`).emit('order-update', updatedOrder);
 
       console.log(`🔔 Real-time notification sent for order status update: ${updatedOrder.id} → ${status}`);
+    }
+
+    // Log order status change
+    const teaBoyEmail = req.user?.email || 'System';
+    const tenantName = req.tenantName || 'Unknown';
+
+    if (status === 'CANCELLED') {
+      logger.order.cancel(teaBoyEmail, tenantName, id.slice(0, 8), updatedOrder.room?.name || 'Unknown', cancelReason || 'No reason provided');
+    } else {
+      logger.order.statusChange(teaBoyEmail, tenantName, id.slice(0, 8), existingOrder.status, status, updatedOrder.room?.name || 'Unknown');
     }
 
     res.json({

@@ -12,6 +12,11 @@
       "launchShowDuration": 2000,
       "backgroundColor": "#0ea5e9",
       "showSpinner": false
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_notification",
+      "iconColor": "#0ea5e9",
+      "sound": "new_order"
     }
   },
   "android": {

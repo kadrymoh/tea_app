@@ -1,0 +1,64 @@
+# ============================================
+# Tea Management System - Backup Configuration
+# ============================================
+# Copy this file to backup.config and fill in your values
+# ============================================
+
+# DATABASE CONFIGURATION
+DB_NAME="tea_management"
+DB_USER="postgres"
+DB_PASSWORD=""
+DB_HOST="localhost"
+DB_PORT="5432"
+
+# LOCAL BACKUP
+LOCAL_BACKUP_DIR="/var/backups/tea-management"
+BACKUP_RETENTION_DAYS=30
+
+# ============================================
+# REMOTE SERVER (Option 1)
+# ============================================
+# For SSH/SCP backup to another server
+REMOTE_ENABLED=false
+REMOTE_SERVER="user@backup-server.com"
+REMOTE_BACKUP_DIR="/backups/tea-management"
+SSH_KEY_PATH="~/.ssh/id_rsa"
+
+# ============================================
+# AWS S3 (Option 2)
+# ============================================
+# Prerequisites: Install AWS CLI and configure credentials
+# sudo apt install awscli
+# aws configure
+AWS_S3_ENABLED=false
+AWS_S3_BUCKET="your-bucket-name"
+AWS_REGION="us-east-1"
+
+# ============================================
+# GOOGLE CLOUD STORAGE (Option 3)
+# ============================================
+# Prerequisites: Install gsutil and authenticate
+# curl https://sdk.cloud.google.com | bash
+# gcloud auth login
+GCS_ENABLED=false
+GCS_BUCKET="your-gcs-bucket"
+
+# ============================================
+# DROPBOX (Option 4)
+# ============================================
+# Prerequisites: Install dropbox_uploader.sh
+# https://github.com/andreafabrizi/Dropbox-Uploader
+DROPBOX_ENABLED=false
+DROPBOX_DIR="/backups/tea-management"
+
+# ============================================
+# NOTIFICATIONS
+# ============================================
+NOTIFICATION_EMAIL=""
+SLACK_WEBHOOK_URL=""
+
+# ============================================
+# APPLICATION BACKUP
+# ============================================
+APP_BACKUP_ENABLED=true
+APP_DIR="/var/www/tea-management"

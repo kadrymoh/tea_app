@@ -1,8 +1,8 @@
-// frontend/super-admin-web/src/components/EditCompanyModal.jsx
+// frontend/super-admin-web/src/components/EditCustomerModal.jsx
 import React, { useState } from 'react';
 import { X, Save, Building2, Shield, DollarSign } from 'lucide-react';
 
-const EditCompanyModal = ({ company, onClose, onSave, theme, plans = [] }) => {
+const EditCustomerModal = ({ company, onClose, onSave, theme, plans = [] }) => {
   const [formData, setFormData] = useState({
     name: company.name,
     slug: company.slug,
@@ -49,7 +49,7 @@ const EditCompanyModal = ({ company, onClose, onSave, theme, plans = [] }) => {
             <div className="p-3 bg-sky-500/10 rounded-xl">
               <Building2 className="w-6 h-6 text-sky-500" />
             </div>
-            <h2 className={`text-2xl font-bold ${theme.text}`}>Edit Company</h2>
+            <h2 className={`text-2xl font-bold ${theme.text}`}>Edit Customer</h2>
           </div>
           <button
             onClick={onClose}
@@ -61,11 +61,11 @@ const EditCompanyModal = ({ company, onClose, onSave, theme, plans = [] }) => {
 
         {/* Form */}
         <div className="space-y-5">
-          {/* Company Name & Slug */}
+          {/* Customer Name & Slug */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={`${theme.text} font-medium mb-2 block text-sm`}>
-                Company Name *
+                Customer Name *
               </label>
               <input
                 type="text"
@@ -137,9 +137,9 @@ const EditCompanyModal = ({ company, onClose, onSave, theme, plans = [] }) => {
                 type="number"
                 min="1"
                 value={formData.maxRooms}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  maxRooms: parseInt(e.target.value) 
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  maxRooms: parseInt(e.target.value)
                 }))}
                 className={`w-full px-4 py-2.5 ${theme.input} border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none`}
               />
@@ -152,9 +152,9 @@ const EditCompanyModal = ({ company, onClose, onSave, theme, plans = [] }) => {
                 type="number"
                 min="1"
                 value={formData.maxUsers}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  maxUsers: parseInt(e.target.value) 
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  maxUsers: parseInt(e.target.value)
                 }))}
                 className={`w-full px-4 py-2.5 ${theme.input} border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none`}
               />
@@ -166,10 +166,10 @@ const EditCompanyModal = ({ company, onClose, onSave, theme, plans = [] }) => {
             <div>
               <p className={`font-medium ${theme.text} mb-1 flex items-center`}>
                 <Shield className="w-4 h-4 mr-2" />
-                Company Status
+                Customer Status
               </p>
               <p className={`text-xs ${theme.textSecondary}`}>
-                {formData.isActive ? 'Company is active and can be accessed' : 'Company is deactivated'}
+                {formData.isActive ? 'Customer is active and can be accessed' : 'Customer is deactivated'}
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -216,4 +216,4 @@ const EditCompanyModal = ({ company, onClose, onSave, theme, plans = [] }) => {
   );
 };
 
-export default EditCompanyModal;
+export default EditCustomerModal;

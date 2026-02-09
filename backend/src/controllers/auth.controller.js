@@ -2,6 +2,7 @@
 const { prisma } = require('../lib/prisma.js');
 const { comparePassword } = require('../utils/password.util.js');
 const { generateTokenPair, verifyRefreshToken } = require('../utils/jwt.util.js');
+const logger = require('../utils/logger.js');
 
 /**
  * Login handler
@@ -135,6 +136,9 @@ const login = async (req, res) => {
 
     console.log('✅ Login successful! Returning user data');
 
+    // Log successful login
+    logger.auth.login(user.role, user.email, user.tenant.name, true);
+
     res.json({
       success: true,
       data: {
@@ -154,6 +158,7 @@ const login = async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
+    logger.auth.login('Unknown', req.body?.email || 'Unknown', req.body?.tenantSlug || 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       error: 'Login failed',
@@ -186,6 +191,9 @@ const logout = async (req, res) => {
         revokedAt: new Date()
       }
     });
+
+    // Log logout (we don't have user info here, but we log it anyway)
+    logger.auth.logout('User', 'Unknown', 'Unknown');
 
     res.json({
       success: true,
@@ -400,12 +408,20 @@ const forcePasswordChange = async (req, res) => {
 
     console.log('✅ Password changed successfully for:', user.email);
 
+    // Log password change
+    const userWithTenant = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { tenant: true }
+    });
+    logger.user.passwordChange(user.email, userWithTenant?.tenant?.name || 'Unknown', true);
+
     res.json({
       success: true,
       message: 'Password changed successfully. You can now use the system.'
     });
   } catch (error) {
     console.error('Force password change error:', error);
+    logger.user.passwordChange(req.user?.email || 'Unknown', 'Unknown', false, error.message);
     res.status(500).json({
       success: false,
       error: 'Failed to change password'

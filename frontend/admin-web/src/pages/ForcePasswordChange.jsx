@@ -84,46 +84,40 @@ const ForcePasswordChange = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-6">
-        <div className="relative bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full border border-slate-800 shadow-2xl text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl border border-gray-200 text-center">
           <div className="flex justify-center mb-6">
-            <div className="p-4 bg-green-500/20 rounded-full">
+            <div className="p-4 bg-green-100 rounded-full">
               <CheckCircle className="w-16 h-16 text-green-500" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">Password Changed Successfully!</h2>
-          <p className="text-slate-400 mb-2">Your password has been updated.</p>
-          <p className="text-slate-500 text-sm">Redirecting to dashboard...</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Password Changed Successfully!</h2>
+          <p className="text-gray-600 mb-2">Your password has been updated.</p>
+          <p className="text-gray-400 text-sm">Redirecting to dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-6">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute w-96 h-96 bg-purple-600/20 rounded-full blur-3xl -top-48 -left-48"></div>
-        <div className="absolute w-96 h-96 bg-pink-600/20 rounded-full blur-3xl -bottom-48 -right-48"></div>
-      </div>
-
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       {/* Password Change Card */}
-      <div className="relative bg-slate-900/80 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full border border-slate-800 shadow-2xl">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl border border-gray-200">
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <div className="p-4 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl">
+          <div className="p-4 bg-blue-500 rounded-2xl">
             <Coffee className="w-12 h-12 text-white" />
           </div>
         </div>
 
         {/* Title */}
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Change Your Password</h1>
-          <p className="text-slate-400">You must set a new password to continue</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Change Your Password</h1>
+          <p className="text-gray-500">You must set a new password to continue</p>
         </div>
 
         {/* Info Box */}
-        <div className="mb-6 bg-blue-500/10 border-2 border-blue-500 text-blue-400 rounded-xl p-4">
+        <div className="mb-6 bg-blue-50 border border-blue-400 text-blue-600 rounded-xl p-4">
           <p className="text-sm">
             <strong>First Time Login:</strong> For security reasons, you must change your temporary password before accessing the system.
           </p>
@@ -131,7 +125,7 @@ const ForcePasswordChange = () => {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 bg-red-500/10 border-2 border-red-500 text-red-400 rounded-xl p-4 flex items-start gap-3">
+          <div className="mb-6 bg-red-50 border border-red-400 text-red-600 rounded-xl p-4 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <span className="text-sm">{error}</span>
           </div>
@@ -141,24 +135,24 @@ const ForcePasswordChange = () => {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Current Password */}
           <div>
-            <label className="text-white font-semibold mb-2 block text-sm">
+            <label className="text-gray-700 font-semibold mb-2 block text-sm">
               Current Password (Temporary)
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type={showCurrentPassword ? 'text' : 'password'}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Enter your temporary password"
-                className="w-full pl-12 pr-12 py-3 bg-slate-800/50 text-white rounded-xl border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                className="w-full pl-12 pr-12 py-3 bg-gray-50 text-gray-800 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                 required
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -167,24 +161,24 @@ const ForcePasswordChange = () => {
 
           {/* New Password */}
           <div>
-            <label className="text-white font-semibold mb-2 block text-sm">
+            <label className="text-gray-700 font-semibold mb-2 block text-sm">
               New Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type={showNewPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Enter new password (min 6 characters)"
-                className="w-full pl-12 pr-12 py-3 bg-slate-800/50 text-white rounded-xl border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                className="w-full pl-12 pr-12 py-3 bg-gray-50 text-gray-800 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                 required
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -193,24 +187,24 @@ const ForcePasswordChange = () => {
 
           {/* Confirm New Password */}
           <div>
-            <label className="text-white font-semibold mb-2 block text-sm">
+            <label className="text-gray-700 font-semibold mb-2 block text-sm">
               Confirm New Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your new password"
-                className="w-full pl-12 pr-12 py-3 bg-slate-800/50 text-white rounded-xl border border-slate-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                className="w-full pl-12 pr-12 py-3 bg-gray-50 text-gray-800 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                 required
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -221,7 +215,7 @@ const ForcePasswordChange = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/25"
+            className="w-full py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
             {loading ? 'Changing Password...' : 'Change Password'}
           </button>
@@ -229,7 +223,7 @@ const ForcePasswordChange = () => {
 
         {/* Footer */}
         <div className="mt-6 text-center">
-          <p className="text-slate-500 text-sm">
+          <p className="text-gray-400 text-sm">
             Tea Management System v2.0
           </p>
         </div>

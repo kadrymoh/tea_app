@@ -3,11 +3,11 @@
 // PART 1/3: Imports, State, and Functions
 // ============================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  Coffee, Clock, CheckCircle, Package, Settings, Plus, Edit, Trash2,
+  Coffee, Clock, CheckCircle, Package, Menu, Plus, Edit, Trash2,
   X, Save, Play, Check, AlertCircle, Upload, LogOut, Loader
 } from 'lucide-react';
 import ImageCropModal from '../components/ImageCropModal';
@@ -15,11 +15,13 @@ import { io } from 'socket.io-client';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from '../components/Toast';
 import { API_CONFIG, getApiUrl } from '../config/api.config';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 const TeaBoyDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { toasts, removeToast, success, error: showError, warning, info } = useToast();
+  const { toasts, removeToast, success, error: showError } = useToast();
 
   const API_BASE_URL = API_CONFIG.BASE_URL;
   const KITCHEN_ID = user?.kitchenId;
@@ -126,35 +128,166 @@ const TeaBoyDashboard = () => {
 
   const categories = ['All Items', 'Hot Tea', 'Coffee', 'Juice', 'Snacks', 'Water'];
 
-  // Request notification permission on mount
+  // Track if app is in foreground or background
+  const isAppInForeground = useRef(true);
+
+  // Request notification permission on mount and setup app state tracking
   useEffect(() => {
+    // Request browser notification permission
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
+
+    // Request Capacitor Local Notifications permission if on native platform
+    const setupNativeNotifications = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const permission = await LocalNotifications.requestPermissions();
+          console.log('📱 Local Notifications permission:', permission);
+
+          // Create notification channels for Android
+          if (Capacitor.getPlatform() === 'android') {
+            // Delete existing channels first to update sound settings
+            try {
+              await LocalNotifications.deleteChannel({ id: 'new_order' });
+              await LocalNotifications.deleteChannel({ id: 'order_prepared' });
+              await LocalNotifications.deleteChannel({ id: 'order_delivered' });
+            } catch (e) {
+              console.log('Channels did not exist yet');
+            }
+
+            await LocalNotifications.createChannel({
+              id: 'new_order',
+              name: 'New Orders',
+              description: 'Notifications for new orders',
+              importance: 5,
+              visibility: 1,
+              sound: 'new_order',
+              vibration: true,
+              lights: true
+            });
+
+            await LocalNotifications.createChannel({
+              id: 'order_prepared',
+              name: 'Order Prepared',
+              description: 'Notifications when orders are prepared',
+              importance: 4,
+              visibility: 1,
+              sound: 'prepared',
+              vibration: true
+            });
+
+            await LocalNotifications.createChannel({
+              id: 'order_delivered',
+              name: 'Order Delivered',
+              description: 'Notifications when orders are delivered',
+              importance: 3,
+              visibility: 1,
+              sound: 'new_order',
+              vibration: true
+            });
+
+            console.log('📱 Notification channels created successfully');
+          }
+        } catch (e) {
+          console.log('Native notifications setup error:', e);
+        }
+      }
+    };
+
+    setupNativeNotifications();
+
+    // Track app visibility state
+    const handleVisibilityChange = () => {
+      isAppInForeground.current = !document.hidden;
+      console.log('📱 App visibility:', isAppInForeground.current ? 'Foreground' : 'Background');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
-  // Function to show browser notification
-  const showBrowserNotification = (title, body, icon = '☕') => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      const notification = new Notification(title, {
-        body,
-        icon: icon,
-        badge: '☕',
-        vibrate: [200, 100, 200],
-        requireInteraction: true
-      });
+  // Function to show native notification (works in both foreground and background)
+  const showNativeNotification = async (title, body, channelId = 'new_order') => {
+    console.log('📱 showNativeNotification called:', { title, body, channelId, isNative: Capacitor.isNativePlatform(), inForeground: isAppInForeground.current });
 
-      notification.onclick = () => {
-        window.focus();
-        notification.close();
-      };
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const notificationId = Math.floor(Math.random() * 2147483647);
+        console.log('📱 Scheduling notification with ID:', notificationId);
+
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title,
+              body,
+              id: notificationId,
+              channelId,
+              sound: channelId === 'new_order' ? 'new_order' :
+                     channelId === 'order_prepared' ? 'prepared' : 'new_order',
+              smallIcon: 'ic_notification',
+              iconColor: '#0ea5e9',
+              ongoing: false,
+              autoCancel: true
+            }
+          ]
+        });
+        console.log('📱 Native notification scheduled successfully');
+      } catch (e) {
+        console.log('❌ Native notification error:', e);
+      }
+    } else {
+      console.log('📱 Not a native platform, skipping native notification');
     }
   };
 
-  // Function to play notification sound
-  const playNotificationSound = () => {
-    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA==');
-    audio.play().catch(e => console.log('Could not play sound:', e));
+  // Function to show browser notification (fallback for web)
+  const showBrowserNotification = (title, body, icon = '☕') => {
+    // Only show browser notification if app is in background on web
+    if (!Capacitor.isNativePlatform() && !isAppInForeground.current) {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const notification = new Notification(title, {
+          body,
+          icon: icon,
+          badge: '☕',
+          vibrate: [200, 100, 200],
+          requireInteraction: true
+        });
+
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+      }
+    }
+  };
+
+  // Different notification sounds for different events
+  const notificationSounds = {
+    // New order sound - cheerful ding
+    newOrder: 'data:audio/wav;base64,UklGRl9vT19teleGZtdCBmb3JtYXQAAQFAAAAAgD4AAIA+AAABAAgATElTVBoAAABJTkZPSVNGVA4AAABMYXZmNTguMjkuMTAwAGRhdGEA' +
+      'UklGRqQFAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YYAFAABkAGQAZACQALYA1ADiAOQA2gDCAJ4AcAA+AAoA2v+q/4b/aP9a/1j/Yv92/5T/uP/i/xAAQgB2AKoA3AAIATIBWAFyAYgBkgGQAYQBbAFIARoB4gCmAGYAIgDe/5r/Vv8a/+j+wP6m/pz+nP6s/sj+7P4Y/0z/hP/A//7/QACCBMQEAAADAAwAFQAcACAAIQAfABsAFAALAAEA9v/q/97/0//K/8P/vv+8/7z/v//E/8z/1f/g/+z/+f8HABYAJQAyAD8ASQBRAE2PRwA+ADIAJAAUAAMAc/9i/1P/R/8+/zj/Nf81/zn/P/9I/1T/Yv9y/4X/mv+w/8j/4P/5/xMALQBGAF4AdACIAJgApgCwALUAtwC0AK0AoQCSAH8AaQBQADQAFwD5/9v/vf+g/4X/bP9X/0X/N/8t/yj/J/8r/zL/Pv9O/2L/ef+S/6//zf/t/w4AMABRAH8AqwDOAPABCgEiATYBSAFVAV0BYQE=',
+
+    // Prepared sound - gentle chime
+    prepared: 'data:audio/wav;base64,UklGRrQCAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YZACAAAAAAEAAgAEAAcACgANABEAFQAZAB0AIQAlACkALQAxADQAOAA7AD4AQABCAEQARQBFAEUARABBAD0AOQA0AC4AKAARAB8AFwAOAAUA+//x/+f/3f/T/8n/wP+3/67/pv+f/5n/lP+Q/43/i/+K/4r/jP+P/5P/mP+f/6f/r/+5/8P/zv/Z/+X/8P/7/wYAEQAcACYALwA4AEAARwBNAFIAVgBZAFoAWgBYAFUAUABKAEMAOwAyACcAHAAQAAQA+P/r/97/0P/D/7b/qf+d/5H/hv98/3P/a/9k/17/Wf9W/1X/Vf9X/1r/X/9m/27/d/+B/4z/mP+l/7L/wP/O/9z/6v/3/wQAEQAdACkANAA+AEcATwBVAFoAXgBfAGAAXwBcAFgAUgBLAEMAOQAuACIAFgAJAPz/7v/f/9H/w/+1/6f/mv+O/4P/ef9w/2n/Y/9f/1z/W/9b/13/YP9l/2z/dP99/4f/kv+e/6v/uP/F/9L/4P/t//n/BQARABwAJgAvADcAPgBDAEgASwBMAEwASwBIAEQAPgA3AC8AJgAcABEABgD6/+7/4f/U/8j/vP+x/6b/nP+T/4v/hP9+/3n/dv90/3P/dP92/3n/ff+C/4j/j/+X/5//qP+x/7v/xf/P/9n/4//s//X//v8GAAQAAA==',
+
+    // Delivered sound - success sound
+    delivered: 'data:audio/wav;base64,UklGRpICAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YW4CAAAAAAMACAAOABYAHgAnADAAOABAAEcATgBTAFcAWgBbAFoAWABUAE8ASAA/ADYAKwAfABMABgD5/+v/3f/P/8H/s/+m/5r/j/+F/3z/dP9u/2n/Zv9l/2X/Z/9r/3D/d/9//4n/lP+g/63/u//J/9j/5//2/wUAFAAgAC0AOgBFAE8AWABfAGUAaQBrAGsAaQBlAF8AWABPAEUA8AAqAB4AEgAFAPn/7P/f/9L/xf+5/67/o/+Z/5D/iP+C/3z/eP91/3T/dP91/3j/fP+B/4f/j/+X/6D/qv+0/7//yv/V/+D/6//1//8ACQASABsAIwAqADEANgA7AD4AQABBAEEAPwA8ADgAMwAtACYAHwAWAA0AAwD5/+//5P/Z/87/xP+5/6//pf+c/5T/jP+G/4D/e/94/3X/dP90/3X/d/96/37/hP+K/5H/mP+g/6n/sv+7/8T/zf/W/9//5//v//b//P8CAAcADAAPABIAFAAVABUAFAAUABEADwALAAcAAwD+//n/9P/u/+n/4//e/9n/1P/Q/8z/yP/F/8P/wf/A/7//v/+//8D/wv/E/8f/y//O/9P/1//c/+H/5v/r/+//9P/4//v//v8AAAIAAwAEAAQABAACAAAA'
+  };
+
+  // Function to play notification sound based on type
+  const playNotificationSound = (type = 'newOrder') => {
+    try {
+      const soundData = notificationSounds[type] || notificationSounds.newOrder;
+      const audio = new Audio(soundData);
+      audio.volume = 1.0;
+      audio.play().catch(e => console.log('Could not play sound:', e));
+    } catch (e) {
+      console.log('Sound playback error:', e);
+    }
   };
 
   const getAuthHeaders = () => ({
@@ -207,35 +340,61 @@ const TeaBoyDashboard = () => {
       });
       const data = await res.json();
       console.log('📥 Update response:', data);
-      
+
       if (!res.ok || !data.success) {
         console.error('❌ Failed to update order:', data);
-        setError(data.message || 'Failed to update order status');
+        const errorMsg = data.message || 'Failed to update order status';
+        setError(errorMsg);
+        showError(errorMsg, 'Order Update Failed');
         return;
       }
-      
+
       await loadOrders();
+      setError(null);
+
+      // Show success message based on status
+      const statusMessages = {
+        'PREPARING': 'Order is now being prepared',
+        'DELIVERED': 'Order marked as delivered successfully',
+        'CANCELLED': 'Order has been cancelled'
+      };
+      success(statusMessages[newStatus] || 'Order status updated', 'Order Updated ✓');
       console.log('✅ Order status updated successfully');
     } catch (err) {
       console.error('❌ Update order error:', err);
-      setError('Failed to update order status: ' + err.message);
+      const errorMsg = 'Failed to update order: Network error';
+      setError(errorMsg);
+      showError(errorMsg, 'Connection Error');
     }
   };
 
   const cancelOrder = async (orderId) => {
     if (!cancelReason.trim()) return;
     try {
-      await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status: 'CANCELLED', cancelReason })
       });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        const errorMsg = data.message || 'Failed to cancel order';
+        setError(errorMsg);
+        showError(errorMsg, 'Cancel Failed');
+        return;
+      }
+
       setCancelModal(null);
       setCancelReason('');
       await loadOrders();
+      setError(null);
+      success('Order cancelled successfully', 'Order Cancelled');
     } catch (err) {
       console.error('Cancel failed:', err);
-      setError('Failed to cancel order');
+      const errorMsg = 'Failed to cancel order: Network error';
+      setError(errorMsg);
+      showError(errorMsg, 'Connection Error');
     }
   };
 
@@ -251,15 +410,26 @@ const TeaBoyDashboard = () => {
 
       if (!res.ok || !data.success) {
         console.error('❌ Failed to toggle availability:', data);
-        setError(data.message || 'Failed to toggle availability');
+        const errorMsg = data.message || 'Failed to update item availability';
+        setError(errorMsg);
+        showError(errorMsg, 'Availability Update Failed');
         return;
       }
 
       await loadMenu();
+      setError(null);
+      const itemName = data.data?.name || 'Item';
+      const isAvailable = data.data?.available;
+      success(
+        `${itemName} is now ${isAvailable ? 'available' : 'out of stock'}`,
+        isAvailable ? 'Item Available ✓' : 'Item Unavailable'
+      );
       console.log('✅ Availability toggled successfully');
     } catch (err) {
       console.error('❌ Toggle availability error:', err);
-      setError('Failed to toggle availability: ' + err.message);
+      const errorMsg = 'Failed to update availability: Network error';
+      setError(errorMsg);
+      showError(errorMsg, 'Connection Error');
     }
   };
 
@@ -337,13 +507,17 @@ const TeaBoyDashboard = () => {
 
   const saveMenuItem = async () => {
     if (!itemForm.name) {
-      setError('Please fill required fields');
+      const errorMsg = 'Please enter item name';
+      setError(errorMsg);
+      showError(errorMsg, 'Missing Information');
       return;
     }
 
     // Validate price if pricing is enabled
     if (itemForm.hasPricing && (!itemForm.price || itemForm.price === '' || isNaN(parseFloat(itemForm.price)))) {
-      setError('Please enter a valid price');
+      const errorMsg = 'Please enter a valid price';
+      setError(errorMsg);
+      showError(errorMsg, 'Invalid Price');
       return;
     }
 
@@ -380,12 +554,20 @@ const TeaBoyDashboard = () => {
         setAddItemModal(false);
         setEditItemModal(null);
         setError(null);
+        success(
+          editItemModal ? `${itemForm.name} updated successfully` : `${itemForm.name} added to menu`,
+          editItemModal ? 'Item Updated ✓' : 'Item Added ✓'
+        );
       } else {
-        setError(data.message || data.error || 'Failed to save item');
+        const errorMsg = data.message || data.error || 'Failed to save menu item';
+        setError(errorMsg);
+        showError(errorMsg, 'Save Failed');
       }
     } catch (err) {
       console.error('Failed to save item:', err);
-      setError('Failed to save menu item');
+      const errorMsg = 'Failed to save menu item: Network error';
+      setError(errorMsg);
+      showError(errorMsg, 'Connection Error');
     } finally {
       setLoading(false);
     }
@@ -394,11 +576,24 @@ const TeaBoyDashboard = () => {
   const deleteMenuItem = async (id) => {
     if (!window.confirm('Are you sure you want to delete this item?')) return;
     try {
-      await fetch(`${API_BASE_URL}/menu/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+      const res = await fetch(`${API_BASE_URL}/menu/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        const errorMsg = data.message || 'Failed to delete menu item';
+        setError(errorMsg);
+        showError(errorMsg, 'Delete Failed');
+        return;
+      }
+
       await loadMenu();
+      setError(null);
+      success('Menu item deleted successfully', 'Item Deleted');
     } catch (err) {
       console.error('Failed to delete item:', err);
-      setError('Failed to delete item');
+      const errorMsg = 'Failed to delete item: Network error';
+      setError(errorMsg);
+      showError(errorMsg, 'Connection Error');
     }
   };
 
@@ -444,18 +639,25 @@ const TeaBoyDashboard = () => {
       // Get room name from order (check multiple possible locations)
       const roomName = order.room?.name || order.roomName || `Room #${order.roomId}`;
 
-      // Show toast notification
-      success(`New order received from ${roomName}`, 'New Order! 🔔', 0);
-
-      // Play notification sound
-      playNotificationSound();
-
-      // Show browser notification
-      showBrowserNotification(
+      // Always show system notification (even when app is open)
+      showNativeNotification(
         '🔔 New Order Received!',
-        `Room: ${roomName}\nItems: ${order.items?.length || 0}`,
-        '☕'
+        `Room: ${roomName} - ${order.items?.length || 0} items`,
+        'new_order'
       );
+
+      // If app is in foreground - also show in-app toast
+      if (isAppInForeground.current) {
+        success(`New order received from ${roomName}`, 'New Order! 🔔');
+        playNotificationSound('newOrder');
+      } else {
+        // Fallback for web when in background
+        showBrowserNotification(
+          '🔔 New Order Received!',
+          `Room: ${roomName}\nItems: ${order.items?.length || 0}`,
+          '☕'
+        );
+      }
 
       loadOrders(); // Reload orders when new order received
     });
@@ -464,8 +666,35 @@ const TeaBoyDashboard = () => {
     socket.on('order-update', (order) => {
       console.log('🔔 Tea Boy received order update:', order);
 
-      // Show toast for updates
-      info(`Order #${order.orderNumber} updated`, 'Order Update');
+      // Get order identifier (use orderNumber, id, or room name)
+      const orderIdentifier = order.orderNumber || order.id?.slice(-6) || 'Order';
+      const roomName = order.room?.name || order.roomName || '';
+      const status = order.status?.toUpperCase() || '';
+
+      // Determine sound based on status
+      let soundType = 'newOrder';
+      let channelId = 'new_order';
+      if (status === 'PREPARING') {
+        soundType = 'prepared';
+        channelId = 'order_prepared';
+      } else if (status === 'DELIVERED') {
+        soundType = 'delivered';
+        channelId = 'order_delivered';
+      }
+
+      // Always show system notification for order updates when app is in background
+      if (!isAppInForeground.current) {
+        showNativeNotification(
+          `Order ${status}`,
+          `Order ${orderIdentifier}${roomName ? ` from ${roomName}` : ''}`,
+          channelId
+        );
+      }
+
+      // Play sound when app is in foreground
+      if (isAppInForeground.current) {
+        playNotificationSound(soundType);
+      }
 
       loadOrders(); // Reload orders when update received
     });
@@ -543,11 +772,12 @@ const TeaBoyDashboard = () => {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <button 
+              <button
                 onClick={() => setShowMenuManagement(!showMenuManagement)}
                 className={`p-3 ${theme.buttonBg} ${theme.buttonHover} rounded-full transition-all ${theme.shadowMd}`}
+                title={showMenuManagement ? 'Back to Orders' : 'Menu Management'}
               >
-                {showMenuManagement ? <X className={`w-6 h-6 ${theme.iconColor}`} /> : <Settings className={`w-6 h-6 ${theme.iconColor}`} />}
+                {showMenuManagement ? <X className={`w-6 h-6 ${theme.iconColor}`} /> : <Menu className={`w-6 h-6 ${theme.iconColor}`} />}
               </button>
               <button
                 onClick={handleLogout}
@@ -560,19 +790,6 @@ const TeaBoyDashboard = () => {
           </div>
         </div>
       </header>
-
-      {/* Error Message */}
-      {error && (
-        <div className="mx-6 mt-4 bg-red-50 border-2 border-red-200 rounded-2xl p-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <AlertCircle className="w-6 h-6 text-red-500" />
-            <span className={`${theme.textMain} font-semibold`}>{error}</span>
-          </div>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-600">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      )}
 
       {/* Orders View */}
       {!showMenuManagement && (
@@ -605,6 +822,19 @@ const TeaBoyDashboard = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 pb-6">
+            {/* Error Message inside Orders tab */}
+            {error && (
+              <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-2xl p-4 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <AlertCircle className="w-6 h-6 text-red-500" />
+                  <span className={`${theme.textMain} font-semibold`}>{error}</span>
+                </div>
+                <button onClick={() => setError(null)} className="text-red-500 hover:text-red-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 pb-4">
               {filteredOrders[activeOrderTab].length === 0 ? (
                 <div className={`col-span-full ${theme.surfaceHighlight} rounded-2xl p-16 text-center ${theme.border} border`}>
@@ -734,62 +964,75 @@ const TeaBoyDashboard = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 pb-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
+            {/* Error Message inside Menu tab */}
+            {error && (
+              <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-2xl p-4 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <AlertCircle className="w-6 h-6 text-red-500" />
+                  <span className={`${theme.textMain} font-semibold`}>{error}</span>
+                </div>
+                <button onClick={() => setError(null)} className="text-red-500 hover:text-red-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 pb-20">
               {filteredMenu.map(item => (
                 <div
                   key={item.id}
-                  className={`group ${theme.surfaceBg} rounded-xl p-3 border transition-all ${theme.shadowMd} ${
+                  className={`group ${theme.surfaceBg} rounded-xl p-2 border transition-all ${theme.shadowMd} ${
                     item.available ? `${theme.border} ${theme.borderHover} hover:${theme.shadowLg}` : `${theme.border} opacity-60`
                   }`}
                 >
-                  <div className={`relative w-full h-28 rounded-lg overflow-hidden mb-2 ${theme.surfaceHighlight} flex items-center justify-center`}>
+                  <div className={`relative w-full h-20 rounded-lg overflow-hidden mb-2 ${theme.surfaceHighlight} flex items-center justify-center`}>
                     {!item.available && (
                       <div className="absolute inset-0 bg-black/70 z-10 flex items-center justify-center backdrop-blur-sm">
-                        <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase">Out of Stock</span>
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Out</span>
                       </div>
                     )}
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt={item.name} className={`w-full h-full object-cover ${!item.available ? 'grayscale' : ''}`} />
                     ) : (
-                      <span className={`text-5xl ${!item.available ? 'grayscale opacity-50' : ''}`}>{item.emoji || '☕'}</span>
+                      <span className={`text-3xl ${!item.available ? 'grayscale opacity-50' : ''}`}>{item.emoji || '☕'}</span>
                     )}
-                    <button onClick={() => deleteMenuItem(item.id)} className={`absolute top-1 right-1 p-1.5 bg-red-500 backdrop-blur-md rounded-full text-white hover:bg-red-600 transition-colors ${theme.shadowMd}`}>
-                      <Trash2 className="w-3 h-3" />
+                    <button onClick={() => deleteMenuItem(item.id)} className={`absolute top-1 right-1 p-1 bg-red-500 backdrop-blur-md rounded-full text-white hover:bg-red-600 transition-colors ${theme.shadowMd}`}>
+                      <Trash2 className="w-2.5 h-2.5" />
                     </button>
-                    <button onClick={() => openEditModal(item)} className={`absolute top-1 left-1 p-1.5 ${theme.primary} backdrop-blur-md rounded-full text-white ${theme.primaryHover} transition-colors ${theme.shadowMd}`}>
-                      <Edit className="w-3 h-3" />
+                    <button onClick={() => openEditModal(item)} className={`absolute top-1 left-1 p-1 ${theme.primary} backdrop-blur-md rounded-full text-white ${theme.primaryHover} transition-colors ${theme.shadowMd}`}>
+                      <Edit className="w-2.5 h-2.5" />
                     </button>
                   </div>
 
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className={`text-sm font-bold ${item.available ? theme.textMain : theme.textSecondary} truncate flex-1 mr-2`}>{item.name}</h3>
+                  <div className="flex justify-between items-center mb-1">
+                    <h3 className={`text-xs font-bold ${item.available ? theme.textMain : theme.textSecondary} truncate flex-1 mr-1`}>{item.name}</h3>
                     {item.price > 0 ? (
-                      <span className={`font-bold text-sm ${item.available ? 'text-green-600' : theme.textSecondary}`}>${item.price.toFixed(2)}</span>
+                      <span className={`font-bold text-xs ${item.available ? 'text-green-600' : theme.textSecondary}`}>${item.price.toFixed(2)}</span>
                     ) : (
-                      <span className={`font-bold text-xs ${item.available ? 'text-blue-600' : theme.textSecondary} bg-blue-50 px-2 py-0.5 rounded`}>FREE</span>
+                      <span className={`font-bold text-[10px] ${item.available ? 'text-blue-600' : theme.textSecondary} bg-blue-50 px-1.5 py-0.5 rounded`}>FREE</span>
                     )}
                   </div>
 
-                  <div className={`flex items-center justify-between pt-2 border-t ${theme.border}`}>
-                    <span className={`text-xs font-bold flex items-center gap-1.5 ${item.available ? theme.textMain : 'text-red-600'}`}>
+                  <div className={`flex items-center justify-between pt-1.5 border-t ${theme.border}`}>
+                    <span className={`text-[10px] font-bold flex items-center gap-1 ${item.available ? theme.textMain : 'text-red-600'}`}>
                       {item.available ? (
                         <>
-                          <span className="relative flex h-2 w-2">
+                          <span className="relative flex h-1.5 w-1.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
                           </span>
-                          Available
+                          In Stock
                         </>
                       ) : (
                         <>
-                          <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                          Out of Stock
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                          Out
                         </>
                       )}
                     </span>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" checked={item.available} onChange={() => toggleAvailability(item.id)} className="sr-only peer" />
-                      <div className="relative w-10 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-0.5 after:bg-white after:border after:border-gray-300 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 shadow-md"></div>
+                      <div className="relative w-8 h-4 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-0.5 after:start-0.5 after:bg-white after:border after:border-gray-300 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600 shadow-md"></div>
                     </label>
                   </div>
                 </div>
